@@ -1,0 +1,1551 @@
+% =============================================================================
+% A Multi-Modal Markov-Chain Passenger-Flow Model for the BKK Budapest
+% GTFS Network: Entropy Maximisation, Kolmogorov Equations,
+% and Stochastic Simulation
+% Version 2.1 — June 2026
+% Changes from v2.0:
+%   - Fix Helbing et al. citation year (2001 -> 2000) in §1.2
+%   - Replace Listing 1 (build_generator_sparse) with current GeneratorBuilder
+%     numpy-groupby implementation
+%   - Replace Listing 2 (gillespie_ssa) with correct GillespieSSA cumsum
+%     Direct Method; remove broken Vose-alias code
+%   - Add Listing 3 (TauLeap): vectorised atomic-outflow-clamping tau-leaping
+%   - §10.3.3: mark tram eigenvalue overflow as FIXED in v2.1
+%   - §11.8 item 9: mark as resolved
+% Update v2.2 — metro platform aggregation fix (resilience_scores-814586d7.csv):
+%   - Table 11, §10.3.1--3: replaced with v2.2 all-metro top-15 results
+%   - Deák Ferenc tér now rank-1 (C_i=1.000); all top-15 are metro (mode=1)
+%   - stop2node aggregation fix: direction-specific platform IDs collapsed to parent_station
+\documentclass[11pt,a4paper]{article}
+
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{lmodern}
+\usepackage[margin=2.5cm]{geometry}
+\usepackage{amsmath,amssymb,amsthm}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{tabularx}
+\usepackage{multirow}
+\usepackage{hyperref}
+\usepackage{xcolor}
+\usepackage{microtype}
+\usepackage{listings}
+\usepackage{float}
+\usepackage{parskip}
+\usepackage{enumitem}
+\usepackage{pifont}
+
+\hypersetup{
+  colorlinks=true,
+  linkcolor=blue!60!black,
+  citecolor=green!50!black,
+  urlcolor=blue!70!black,
+}
+
+\lstset{
+  basicstyle=\ttfamily\footnotesize,
+  keywordstyle=\color{blue!70!black}\bfseries,
+  commentstyle=\color{green!50!black}\itshape,
+  stringstyle=\color{red!70!black},
+  numbers=left,
+  numberstyle=\tiny\color{gray},
+  numbersep=6pt,
+  frame=single,
+  framerule=0.4pt,
+  xleftmargin=20pt,
+  xrightmargin=5pt,
+  breaklines=true,
+  showstringspaces=false,
+  language=Python,
+  tabsize=4,
+  captionpos=b,
+}
+
+\theoremstyle{plain}
+\newtheorem{theorem}{Theorem}[section]
+\newtheorem{proposition}[theorem]{Proposition}
+
+\theoremstyle{definition}
+\newtheorem{definition}[theorem]{Definition}
+\newtheorem{assumption}[theorem]{Assumption}
+
+\theoremstyle{remark}
+\newtheorem{remark}[theorem]{Remark}
+
+\title{%
+  A Multi-Modal Markov-Chain Passenger-Flow Model\\
+  for the BKK Budapest GTFS Network:\\
+  Entropy Maximisation, Kolmogorov Equations,\\
+  and Stochastic Simulation%
+  \thanks{%
+    Correspondence: \texttt{[author@institution.edu]}.
+    Code: \url{https://github.com/[repo]}.
+    BKK GTFS feed: \url{https://opendata.bkk.hu} (CC0-1.0).}}
+\author{Transport Modelling Working Group\\
+  Department of [Transport/Operations Research], [Institution]}
+\date{Version 2.1 --- June 2026}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+We develop, implement, and critically evaluate a multi-modal Markov-chain
+passenger-flow model for the BKK Budapest public transit network, calibrated
+from the GTFS (General Transit Feed Specification) schedule.  The model
+operates on three complementary stochastic layers: (L1)~a discrete-time Markov
+chain (DTMC) for tractable analytical computation; (L2)~a continuous-time
+Markov chain (CTMC) governed by the Kolmogorov Forward Equation, whose
+generator~$Q^v$ is derived from Wilson's entropy-maximisation principle applied
+to the GTFS-derived generalised cost structure; and (L3)~exact stochastic
+realisations via the Doob--Gillespie Stochastic Simulation Algorithm~(SSA) with
+a $\tau$-leaping approximation for large populations.
+
+We make several contributions beyond the standard formulation:
+(i)~a rigorous derivation of the CTMC generator from entropy maximisation with
+proper dimensional analysis; (ii)~explicit handling of graph sparsity and
+disconnected origin--destination pairs; (iii)~a hierarchical Poisson--log-linear
+prior for stop-level initial passenger counts, anchored to BKK's published
+system ridership, in the absence of automated fare-collection data;
+(iv)~a node-removal resilience analysis that explicitly distinguishes
+irreducible from reducible chains; and (v)~a reproducible correction record.
+Previously reported stop rankings and KFE--SSA comparisons are withdrawn
+because audit revealed a dimensional rate error and incompatible modal state
+indices.  The corrected implementation and regression tests are the primary
+contribution; new empirical claims require a pinned-feed rerun.
+
+\textbf{Limitations:} The model is a first-principles construct without
+AFC/APC validation data.  The gravity kernel imposes independence across
+passengers and modes; capacity constraints are absent from the base
+formulation; and the time-homogeneous CTMC is an idealisation of the
+time-varying GTFS schedule.  These limitations are discussed quantitatively
+throughout.
+
+\textbf{Keywords:} stochastic transit assignment, entropy maximisation,
+continuous-time Markov chain, Gillespie algorithm, GTFS, network resilience,
+Kemeny constant.
+\end{abstract}
+
+\tableofcontents
+\newpage
+
+% =============================================================================
+\section{Introduction}
+\label{sec:intro}
+
+\subsection{Motivation and Problem Setting}
+
+The Budapest metropolitan public transit network operated by Budapesti
+K\"{o}zleked\'{e}si K\"{o}zpont (BKK) is one of Europe's denser urban transit
+systems, serving on the order of $4\times10^6$ passenger journeys per weekday
+across six modal families (metro, bus, tram, trolleybus, suburban railway, and
+ferry).  Despite this scale, spatially resolved passenger flow---the number of
+passengers at each stop at each point in time---is not directly observable from
+the publicly available schedule data alone.
+
+The practical stakes are high.  Spatial passenger density determines platform
+crowding risk, vehicle overcrowding, intermodal transfer delays, and the
+propagation of service disruptions.  A principled model for passenger flow
+dynamics, even an imperfect one grounded in well-understood probabilistic
+machinery, enables:
+\begin{enumerate}
+  \item \textbf{Network resilience assessment:} identifying stops and links
+    whose failure disproportionately degrades service.
+  \item \textbf{Prior initialisation:} providing starting distributions for
+    data-assimilation procedures once partial measurements (APC counters, AFC
+    tap-in records) become available.
+  \item \textbf{Scenario analysis:} evaluating the system-level impact of new
+    routes, closures, or timetable changes without requiring demand surveys.
+\end{enumerate}
+
+\subsection{Related Work}
+
+\textbf{Entropy-based transport modelling.}
+Wilson's~\cite{wilson1969} doubly-constrained gravity model remains the
+theoretical backbone of spatial interaction modelling.  Its maximum-entropy
+derivation has been formalised and extended by Erlander and
+Stewart~\cite{erlander1990} and connected to random utility models by
+Anas~\cite{anas1983}.  Recent work has embedded entropy transport models within
+the Wasserstein optimal-transport framework~\cite{peyre2019}.
+
+\textbf{Stochastic transit assignment.}
+The logit-based stochastic user equilibrium (SUE) model of Dial~\cite{dial1971}
+and the frequency-based assignment of Spiess and Florian~\cite{spiess1989} are
+the industry standards.  Dynamic stochastic assignment extending to
+time-varying supply is treated in Yildirimoglu and Kim~\cite{yildirimoglu2018}
+and the survey of Bliemer et al.~\cite{bliemer2003}.  None of these papers
+couple the assignment to a CTMC generator or uses Gillespie simulation.
+
+\textbf{CTMC models for transit.}
+Markov-chain models have been applied to pedestrian flow
+\cite{helbing2000},
+%% v2.0 incorrectly cited [Helbing et al., 2001]; corrected to 2000 in v2.1.
+station waiting queues~\cite{jaiswal1961}, and subway dwell
+times~\cite{zhang2019}, but full-network CTMC formulations over
+GTFS-structured schedules are uncommon.  The closest precedent is the
+queueing-network approach of Heidergott et al.~\cite{heidergott2010}.
+
+\textbf{Gillespie simulation beyond biochemistry.}
+Although Gillespie's SSA~\cite{gillespie1977} was developed for chemical
+reaction networks, it applies to any CTMC.  Applications in
+ecology~\cite{wilkinson2018}, epidemiology~\cite{allen2008}, and
+traffic~\cite{maerivoet2005} demonstrate its scope.
+
+\textbf{Network resilience.}
+The node-removal framework we adopt draws on Latora and
+Marchiori~\cite{latora2001}, Kemeny and Snell~\cite{kemeny1976}, and the
+transit-specific vulnerability analysis of Cats and
+Jenelius~\cite{cats2014}.
+
+\subsection{Contributions and Scope}
+
+\begin{description}[leftmargin=2em]
+  \item[C1.] \textbf{CTMC generator from GTFS.}  We show precisely how the
+    Wilson entropy solution translates into a CTMC generator whose units are
+    dimensionally consistent and whose entries are computable from
+    \texttt{stop\_times.txt}.
+  \item[C2.] \textbf{Honest regime analysis.}  We document quantitatively the
+    gap between the KFE mean-field trajectory and the finite-rate SSA
+    trajectory, and explain when each is the appropriate model.
+  \item[C3.] \textbf{Sparse-graph formulation.}  The full $n\times n$ cost
+    matrix is never formed; all operations exploit the $\ll1\%$ connectivity
+    of the real GTFS graph.
+  \item[C4.] \textbf{Hierarchical demand prior.}  A calibrated Poisson
+    log-linear prior provides plausible initial passenger counts from freely
+    available covariates.
+  \item[C5.] \textbf{Principled resilience ranking.}  Three complementary
+    vulnerability metrics (Kemeny, spectral gap, efficiency) are combined into
+    a criticality score with $O(Kn^2)$ complexity.
+\end{description}
+
+\subsection{Paper Organisation}
+
+Section~\ref{sec:network} formalises the network graph.
+Section~\ref{sec:entropy} derives the entropy-maximising flow and transition
+probabilities.
+Section~\ref{sec:ctmc} develops the CTMC generator and the Kolmogorov Forward
+Equation.
+Section~\ref{sec:prior} presents the hierarchical demand prior.
+Section~\ref{sec:ssa} covers the Gillespie SSA and $\tau$-leaping.
+Section~\ref{sec:complexity} gives a computational complexity analysis.
+Section~\ref{sec:impl} describes the Python implementation.
+Section~\ref{sec:results} reports empirical results on the full BKK network.
+Section~\ref{sec:resilience} develops the resilience analysis.
+Section~\ref{sec:limitations} is an honest discussion of limitations.
+Section~\ref{sec:conclusion} concludes.
+
+% =============================================================================
+\section{Network Graph and GTFS Data Model}
+\label{sec:network}
+
+\subsection{GTFS Inventory}
+
+\begin{table}[h]
+\centering
+\caption{BKK GTFS files used in this work.}
+\label{tab:gtfs}
+\begin{tabular}{lll}
+\toprule
+GTFS File & Key Fields Used & Role in Model \\
+\midrule
+\texttt{stops.txt}       & \texttt{stop\_id, stop\_lat, stop\_lon}     & Vertex set $S$, $|S|=n$ \\
+\texttt{routes.txt}      & \texttt{route\_id, route\_type}             & Mode classification $v$ \\
+\texttt{trips.txt}       & \texttt{trip\_id, route\_id, service\_id}   & Trip--route link \\
+\texttt{stop\_times.txt} & \texttt{arrival\_time, departure\_time}     & Scheduled travel times $\bar\tau^v_{ij}$ \\
+\texttt{shapes.txt}      & \texttt{shape\_pt\_lat, shape\_pt\_lon}     & Route distance $d^v_{ij}$ \\
+\texttt{calendar.txt}    & \texttt{monday\ldots friday}                & Weekday service filter \\
+\texttt{transfers.txt}   & \texttt{from\_stop\_id, min\_transfer\_time}& Transfer penalty $\delta_i$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Multi-Modal Stop Graph}
+
+\begin{definition}[Multi-modal stop graph]
+Let $S=\{1,\ldots,n\}$ denote the set of GTFS stops and
+$\mathcal{V}=\{1,\ldots,m\}$ the set of vehicle modes.  For each mode
+$v\in\mathcal{V}$, define the modal subgraph $G^v=(S^v,E^v)$, where
+$S^v\subseteq S$ is the set of stops served by mode $v$ and
+\[
+  E^v=\bigl\{(i,j)\in S^v\times S^v:\exists\text{ a trip of mode }v
+    \text{ visiting }i\text{ immediately before }j\bigr\}.
+\]
+The multi-modal graph is the union $G=(S,\bigcup_v E^v)$.
+\end{definition}
+
+\begin{remark}[Sparsity]
+On the BKK network $|E^v|\ll|S^v|^2$ for all modes.  The bus sub-graph has
+$\approx0.5\%$ fill.  All matrices are stored in CSR format; the full
+$n\times n$ dense matrix is never materialised.
+\end{remark}
+
+\begin{definition}[Neighbourhood sets]
+$\mathcal{N}^v(i)=\{j\in S^v:(i,j)\in E^v\}$,\quad
+$\mathcal{N}^v_{\mathrm{in}}(i)=\{j\in S^v:(j,i)\in E^v\}$.
+\end{definition}
+
+\subsection{BKK Mode Classification}
+
+\begin{table}[h]
+\centering
+\caption{BKK vehicle modes.  $\kappa^v$ is the mode-specific comfort weight.}
+\label{tab:modes}
+\begin{tabular}{cllcccl}
+\toprule
+$v$ & Mode & \texttt{rt} & Speed (km/h) & Cap.\ (pax) & $\kappa^v$ & Example Lines \\
+\midrule
+1 & Bus          & 3   & 18--25 & 80--180   & 1.00 & 7, 8E, 100E, 200E \\
+2 & Tram         & 0   & 15--22 & 200--350  & 0.70 & 2, 4, 6, 47--49 \\
+3 & Trolleybus   & 800 & 15--20 & 100--170  & 0.85 & 70, 72, 74, 76 \\
+4 & Metro        & 1   & 30--40 & 800--1000 & 0.40 & M1, M2, M3, M4 \\
+5 & Suburban rly & 2   & 25--40 & 400--600  & 0.55 & H5, H6, H7, H8 \\
+6 & Ferry        & 4   & 12--18 & 100       & 1.20 & D11, D12, D14 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Admissible Transitions and Disconnected Pairs}
+
+A transition $(i,j)$ on mode $v$ is admissible iff $(i,j)\in E^v$.  We assign
+a finite cost only to admissible transitions; all others receive
+$C^v_{ij}=+\infty$, yielding $\exp(-\lambda^v C^v_{ij})=0$ and zero
+probability/rate.  This is a strictly correct handling of graph sparsity: we do
+not approximate disconnected pairs with a large finite penalty~$C_\infty$,
+which would inject spuriously small but non-zero probabilities across the entire
+network.
+
+\begin{remark}[Self-loops]
+The entropy-maximisation formulation excludes self-loops ($i\ne j$ in the
+constraint set); accordingly $C^v_{ii}$ plays no role.  The correct
+correspondence is that $P^v$ as defined in Definition~\ref{def:dtmc} is the
+\emph{embedded jump chain} of the CTMC, not the $\Delta t$-uniformisation.
+\end{remark}
+
+% =============================================================================
+\section{Entropy Maximisation and the Softmax Flow}
+\label{sec:entropy}
+
+\subsection{Generalised Cost Matrix}
+
+\begin{definition}[Generalised cost]
+For admissible pair $(i,j)\in E^v$,
+\begin{equation}
+  C^v_{ij} = \kappa^v\,\bar\tau^v_{ij} + \gamma\,d^v_{ij}
+              + \delta\,\mathbf{1}_{\{i\in\mathcal{T}\}}\,t_{\mathrm{tf}}(i),
+  \label{eq:cost}
+\end{equation}
+where $\bar\tau^v_{ij}$~[s] is the median scheduled travel time,
+$\kappa^v>0$ is the mode-specific comfort weight,
+$d^v_{ij}$~[m] is the in-vehicle distance,
+$\gamma$~[s\,m$^{-1}$] is the distance penalty,
+$t_{\mathrm{tf}}(i)$~[s] is the minimum transfer time at stop~$i$,
+and $\delta\in\{0,1\}$ indicates a mode change.  All terms are in seconds.
+\end{definition}
+
+\begin{remark}[Dimensional consistency]
+$C^v_{ij}$~[s] and $\lambda^v$~[s$^{-1}$] make the exponent
+$\lambda^v C^v_{ij}$ dimensionless, consistent with the interpretation of
+$\lambda^v$ as an inverse temperature governing cost sensitivity.
+\end{remark}
+
+\subsection{Entropy-Maximising Flow}
+
+\begin{assumption}[Separable origin constraint]
+\label{ass:origin}
+Passengers are assigned a departure mode~$v$ before departure; within a mode,
+they choose destinations to maximise entropy subject to an expected-cost
+constraint.
+\end{assumption}
+
+\begin{proposition}[Wilson softmax flow]
+Under Assumption~\ref{ass:origin}, the flow $F^v_{ij}\ge0$ maximising Shannon
+entropy $H=-\sum_{v,i,j}F^v_{ij}\ln F^v_{ij}$ subject to the origin
+constraint $\sum_j F^v_{ij}=N^v_i(0)$ and the cost constraint
+$\sum_{ij}F^v_{ij}C^v_{ij}\le\bar{C}^v$ is given by
+\begin{equation}
+  F^v_{ij} = N^v_i(0)\,\pi^v_{j|i},\qquad
+  \pi^v_{j|i} = \frac{\exp(-\lambda^v C^v_{ij})}
+    {\displaystyle\sum_{k\in\mathcal{N}^v(i)}\exp(-\lambda^v C^v_{ik})},
+  \label{eq:softmax}
+\end{equation}
+where $\lambda^v\ge0$ is the Lagrange multiplier, uniquely determined by the
+binding cost constraint.
+\end{proposition}
+
+\begin{proof}[Proof sketch]
+The Lagrangian yields $\ln F^v_{ij}=-1+\mu^v_i-\lambda^v C^v_{ij}$, i.e.\
+$F^v_{ij}\propto\exp(-\lambda^v C^v_{ij})$.  Row normalisation gives
+\eqref{eq:softmax}.  Convexity of $-H$ ensures a unique maximiser.
+\end{proof}
+
+\begin{definition}[DTMC transition matrix]
+\label{def:dtmc}
+The row-stochastic DTMC transition matrix for mode~$v$ is
+$P^v_{ij}=\pi^v_{j|i}$ ($i\ne j$), $P^v_{ii}=0$ (no self-loop),
+$P^v_{ij}=0$ for $(i,j)\notin E^v$.
+\end{definition}
+
+\subsection{DTMC Time Evolution}
+
+The population vector on mode~$v$ at step~$t$ evolves as
+\begin{equation}
+  N^v(t+1) = N^v(t)\,P^v,\qquad N_i(t)=\sum_{v=1}^m N^v_i(t).
+\end{equation}
+
+% =============================================================================
+\section{Continuous-Time Markov Chain and the Kolmogorov Forward Equation}
+\label{sec:ctmc}
+
+\subsection{Motivation for the CTMC Formulation}
+
+The GTFS records precise departure timestamps at each stop.  Rather than
+discretising the schedule into fixed steps $\Delta t$, we embed the passenger
+movement process in continuous time.  Under the memoryless (Markov)
+approximation for inter-departure intervals---justified when vehicles run at
+roughly constant headway---the waiting time is exponentially distributed and the
+process is a CTMC.
+
+\begin{assumption}[Poisson arrivals]
+\label{ass:poisson}
+The departure process at stop~$i$ on mode~$v$ is approximated as a Poisson
+process with rate $f^v_i$ [vehicles\,s$^{-1}$] estimated from the GTFS
+timetable.
+\end{assumption}
+
+\subsection{CTMC Generator}
+
+\begin{definition}[Infinitesimal generator]
+For mode~$v$, the generator $Q^v\in\mathbb{R}^{n\times n}$ is defined by
+\begin{equation}
+  Q^v_{ij} = \begin{cases}
+    q^v_{ij}\ge0, & j\ne i,\ (i,j)\in E^v, \\
+    0,             & j\ne i,\ (i,j)\notin E^v, \\
+    -\displaystyle\sum_{k\in\mathcal{N}^v(i)} q^v_{ik}, & j=i.
+  \end{cases}
+\end{equation}
+All off-diagonal entries are non-negative and all row sums vanish.
+\end{definition}
+
+\subsection{Rates from Entropy Kernel and GTFS Frequencies}
+\label{sec:rates}
+
+The off-diagonal rate decomposes as
+\begin{equation}
+  q^v_{ij} =
+  \underbrace{\mu^v_i}_{\text{departure intensity}}\cdot
+  \underbrace{\pi^v_{j|i}}_{\text{Wilson kernel}},
+  \qquad (i,j)\in E^v,\;j\ne i,
+  \label{eq:rate}
+\end{equation}
+where the per-passenger departure hazard is the scheduled vehicle frequency
+\begin{equation}
+  \mu^v_i = f^v_i
+  \quad[\text{s}^{-1}].
+  \label{eq:intensity}
+\end{equation}
+Here $f^v_i$ [vehicles\,s$^{-1}$] is the peak-window departure frequency.
+This correction is dimensionally necessary: every entry of a CTMC generator
+has units s$^{-1}$.  Capacity $\bar{k}^v$ and load factor $\rho^v$ describe
+supply and demand, but multiplying them into $Q$ and then again by $N_i$ in
+the KFE/SSA propensity would produce the invalid unit pax$^2$\,s$^{-1}$.
+
+\subsection{DTMC--CTMC Equivalence}
+
+\begin{proposition}[Matrix exponential embedding]
+The matrix exponential $P^v(\Delta t):=\exp(Q^v\Delta t)$ is stochastic for
+all $\Delta t\ge0$; its first-order expansion recovers the Wilson DTMC entry
+structure with rescaled self-loop probabilities.  The DTMC of
+Definition~\ref{def:dtmc} is the \emph{embedded jump chain} of the CTMC,
+observed at transition moments stripped of holding times.
+\end{proposition}
+
+\subsection{Kolmogorov Forward Equation}
+
+\begin{theorem}[KFE]
+Let $p^v(t)\in[0,1]^n$ denote the normalised probability distribution of a
+single tagged passenger of mode~$v$.  Then
+\begin{equation}
+  \frac{\mathrm{d}p^v(t)}{\mathrm{d}t} = p^v(t)\,Q^v,\qquad
+  p^v(0)=p^v_0,\label{eq:kfe}
+\end{equation}
+with unique solution $p^v(t)=p^v_0\exp(Q^v t)$.
+\end{theorem}
+
+By linearity and the mean-field (fluid-limit) approximation, the same equation
+holds for population counts:
+\begin{equation}
+  \frac{\mathrm{d}N^v(t)}{\mathrm{d}t} = N^v(t)\,Q^v,\qquad
+  N^v(0)=N^v_0.\label{eq:kfe-pop}
+\end{equation}
+Conservation of mass follows from $Q^v\mathbf{1}=\mathbf{0}$.
+
+\subsection{Stationarity, Ergodicity, and Existence of Stationary Distributions}
+
+\begin{assumption}[Irreducibility per mode]
+\label{ass:irreducible}
+For each mode~$v$, the directed graph~$G^v$ is strongly connected.
+\end{assumption}
+
+\begin{proposition}[Ergodicity]
+Under Assumption~\ref{ass:irreducible}, $Q^v$ is irreducible and the CTMC is
+ergodic.  A unique stationary distribution $\pi^v$ with $\pi^v Q^v=\mathbf{0}$,
+$\|\pi^v\|_1=1$ exists, and $p^v(t)\to\pi^v$ exponentially fast.
+\end{proposition}
+
+\begin{remark}[Irreducibility in practice]
+The BKK graph is not strongly connected for every mode in isolation.  In
+implementation we partition $S^v$ into strongly connected components using
+\texttt{scipy.sparse.csgraph} and analyse each separately.
+\end{remark}
+
+\begin{remark}[Time-homogeneity and GTFS schedules]
+A real GTFS schedule is time-varying; the time-homogeneous CTMC is valid only
+within a narrow service window (e.g., 07:00--09:00 peak hour) where $f^v_i$
+is approximately constant.
+\end{remark}
+
+% =============================================================================
+\section{Prior Estimation of Initial Passenger Counts}
+\label{sec:prior}
+
+\subsection{Setting and Identifiability}
+
+In the absence of APC or AFC data, the initial count $N_i(0)$ is unobserved.
+We construct a prior $\hat{N}_i(0)$ from freely available covariates and
+calibrate its overall scale to BKK's published aggregate ridership.
+
+\begin{assumption}[Log-linear demand]
+\begin{equation}
+  N_i(0)\sim\mathrm{Poisson}(\lambda_i),\qquad
+  \log\lambda_i = \beta_0+\boldsymbol{\beta}^\top\mathbf{x}_i+\xi_i,\quad
+  \xi_i\overset{\mathrm{iid}}{\sim}\mathcal{N}(0,\sigma^2).
+  \label{eq:loglinear}
+\end{equation}
+\end{assumption}
+
+\subsection{Feature Vector}
+
+\begin{table}[h]
+\centering
+\caption{Features used in the log-linear demand prior.}
+\label{tab:features}
+\begin{tabular}{lllll}
+\toprule
+Feature & Symbol & Source & Unit \\
+\midrule
+Peak-hour service frequency     & $f_i$       & GTFS             & trips\,h$^{-1}$ \\
+Population in 400--800\,m catchment & $\mathrm{Pop}_i$ & KSH/WorldPop & persons \\
+POI count in 400\,m catchment   & $\mathrm{POI}_i$ & OpenStreetMap  & count \\
+Network betweenness centrality  & $B_i$       & GTFS graph       & [0,1] \\
+Interchange indicator           & $I_i$       & GTFS transfers   & $\{0,1\}$ \\
+Distance to De\'ak F.\ t\'er   & $D_i$       & Haversine        & km \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Literature-Informed Prior Coefficients}
+
+\begin{table}[h]
+\centering
+\caption{Prior distributions $\mathcal{N}(\mu_\beta,\sigma_\beta^2)$ for
+  log-linear coefficients.}
+\label{tab:priors}
+\begin{tabular}{lcccc}
+\toprule
+Covariate (log-transformed) & Symbol & $\mu_\beta$ & $\sigma_\beta$ & Basis \\
+\midrule
+$\log(1+f_i)$                & $\beta_1$ & $+0.70$ & 0.10 & Service elasticity \cite{schiewe2022} \\
+$\log(1+\mathrm{Pop}_i)$    & $\beta_2$ & $+0.60$ & 0.15 & Population elasticity \\
+$\log(1+\mathrm{POI}_i)$    & $\beta_3$ & $+0.20$ & 0.10 & Activity generation \\
+$B_i$                        & $\beta_4$ & $+0.30$ & 0.15 & Network centrality \\
+$I_i$                        & $\beta_5$ & $+0.50$ & 0.20 & Transfer-hub effect \\
+$\log(1+D_i)$                & $\beta_6$ & $-0.25$ & 0.10 & Distance decay \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Calibration Anchor}
+
+BKK reports $N_{\mathrm{day}}\approx4\times10^6$ weekday boardings.
+With $\phi_{\mathrm{peak}}\approx0.11$,
+\begin{equation}
+  N_{\mathrm{peak}}=\phi_{\mathrm{peak}}\,N_{\mathrm{day}}\approx440{,}000\text{ passengers.}
+\end{equation}
+The intercept $\beta_0$ is set so that $\sum_i\hat{N}_i(0)=N_{\mathrm{peak}}$.
+
+\subsection{Diurnal Profile}
+
+$\hat{N}_i(0;h)=24\,\phi(h)\,\hat{N}_i(0)$ with
+$\phi(07\text{:}00\text{--}09\text{:}00)\approx0.11$.
+
+\subsection{Three Estimators}
+
+\textbf{E1~--- Service proxy (GTFS only).}
+$\hat{N}_i(0)\propto f_i\cdot\bar{k}^{v_i}\cdot\rho$.
+No external data needed; captures frequency variation but ignores land use.
+
+\textbf{E2~--- Poisson log-linear (recommended).}
+Equation~\eqref{eq:loglinear} with priors from Table~\ref{tab:priors}.
+
+\textbf{E3~--- Full Bayesian (for future use with AFC/APC data).}
+Full posterior inference via MCMC.  Reduces to E2 when no observations are
+available.
+
+\subsection{Uncertainty Propagation}
+
+Monte Carlo propagation: draw
+$\boldsymbol{\beta}^{(s)}\sim\mathcal{N}(\boldsymbol{\mu}_\beta,\Sigma_\beta)$,
+compute $\hat{N}^{(s)}_i(0)$, run KFE or SSA, report empirical quantiles.
+
+% =============================================================================
+\section{Gillespie Stochastic Simulation Algorithm}
+\label{sec:ssa}
+
+\subsection{Reaction-Channel Representation}
+
+The propensity of channel $(v,i\to j)$ is
+\begin{equation}
+  a^v_{ij}(t)=N^v_i(t)\,q^v_{ij},\qquad
+  a_0(t)=\sum_v\sum_i\sum_{j\in\mathcal{N}^v(i)}a^v_{ij}(t).
+\end{equation}
+This is exact for $N^v_i(t)\in\mathbb{Z}_{\ge0}$; the mean-field ODE
+\eqref{eq:kfe-pop} is recovered in the limit $N^v_i\to\infty$.
+
+\subsection{Direct Method (Exact SSA)}
+
+\textbf{Implementation note (v2.1):}  Channel selection uses the $O(R)$
+inverse-CDF method (\texttt{np.cumsum} + \texttt{np.searchsorted}), which is
+simpler than the Vose alias method \cite{vose1991} and sufficient at the BKK
+event rates encountered in practice.  The alias method remains an $O(1)$
+alternative for very large $R$ and is noted for future optimisation.
+
+\begin{figure}[H]
+\centering
+\fbox{\begin{minipage}{0.92\textwidth}
+\textbf{Algorithm 1: Gillespie Direct Method for BKK Multi-Modal CTMC}\\[4pt]
+\textit{Require:} Sparse channels $\{(v,i,j,q^v_{ij})\}$ (only $(i,j)\in E^v$);
+initial state $N(0)$; horizon $T$.\\
+\textit{Ensure:} Event list $\mathcal{E}$; final state $N(T)$.\\[4pt]
+\begin{enumerate}
+  \item $t\leftarrow0$,\quad $\mathcal{E}\leftarrow\emptyset$
+  \item \textbf{while} $t<T$ \textbf{do}
+  \begin{enumerate}
+    \item Compute propensities (vectorised):\quad
+          $a[r]\leftarrow N^v_i\cdot q^v_{ij}$;\quad
+          $a_0\leftarrow\sum_r a[r]$
+    \item \textbf{if} $a_0=0$ \textbf{then break}
+    \item Draw $\tau\leftarrow-\ln(u_1)/a_0$,\quad $u_1\sim\mathcal{U}(0,1)$
+    \item \textbf{if} $t+\tau>T$ \textbf{then break}
+    \item Select $r^*$ via inverse-CDF on $\{a[r]/a_0\}$ using $u_2\sim\mathcal{U}(0,1)$
+    \item $t\leftarrow t+\tau$;\quad
+          $N^{v^*}_{i^*}\leftarrow N^{v^*}_{i^*}-1$;\quad
+          $N^{v^*}_{j^*}\leftarrow N^{v^*}_{j^*}+1$
+    \item Append $(t,v^*,i^*,j^*)$ to $\mathcal{E}$
+  \end{enumerate}
+  \item \textbf{return} $\mathcal{E}$, $N(T)$
+\end{enumerate}
+\end{minipage}}
+\caption{Gillespie Direct Method for BKK Multi-Modal CTMC.}
+\label{alg:ssa}
+\end{figure}
+
+\subsection{$\tau$-Leaping Approximation}
+
+When $N^v_i\gg1$, the $\tau$-leap \cite{gillespie2001} advances by a fixed
+step~$\tau$ and draws
+\begin{equation}
+  \Delta k^v_{ij}\sim\mathrm{Poisson}(a^v_{ij}\tau),
+  \label{eq:tauleap}
+\end{equation}
+then updates populations subject to an integer non-negativity guard.  The
+implemented multinomial oversubscription rule preserves both mass and integer
+counts, while remaining an approximate leap rather than exact SSA.
+
+\textbf{Integer atomic outflow handling.} If channels sharing origin $i$
+propose a total drain above $N_i^v$, independent serial clamping is
+order-dependent and proportional scaling creates fractional passengers.  The
+corrected implementation redraws the $N_i^v$ available passengers from a
+multinomial distribution with probabilities proportional to proposed counts:
+\begin{align}
+  \Delta k^v_{ij} &\sim \mathrm{Poisson}(a^v_{ij}\tau), \label{eq:draw}\\
+  D_{vi} &= \textstyle\sum_{j\in\mathcal{N}^v(i)}\Delta k^v_{ij},
+    \label{eq:total-out}\\
+  (\Delta k^v_{ij})_j \mid D_{vi}>N_i^v
+  &\sim \operatorname{Multinomial}\!\left(
+  N_i^v,\;(\Delta k^v_{ij}/D_{vi})_j\right).
+\end{align}
+Initial non-integer demand estimates are converted once by largest-remainder
+rounding, preserving the rounded grand total.  Thereafter SSA and tau-leap
+states remain integer-valued.
+
+\textbf{Step-size control.}
+The implementation uses the bounded propensity-ratio heuristic
+\begin{equation}
+  \tau = \operatorname{clip}\!\left(
+    \varepsilon a_0/\max_r a_r,\;0.1\tau_0,\;10\tau_0\right).
+\end{equation}
+This is not the full Cao--Gillespie--Petzold method \cite{cao2006}, which
+requires species-wise drift and variance bounds.
+
+\subsection{Hybrid SSA--Fluid Decomposition}
+
+At stops with $N^v_i>N_{\mathrm{thresh}}\approx1000$, the coefficient of
+variation $\sim N_i^{-1/2}\ll1$ and the fluid ODE~\eqref{eq:kfe-pop} is
+accurate; at stops with $N^v_i\lesssim10$ stochastic fluctuations dominate.
+We recommend a hybrid regime with coupling via boundary propensities at
+interface stops.
+
+% =============================================================================
+\section{Computational Complexity Analysis}
+\label{sec:complexity}
+
+\subsection{Graph-Structure Complexity}
+
+Let $n=|S|$, $m=|\mathcal{V}|$, $R=\sum_v|E^v|$.  For BKK:
+$n\approx5{,}500$, $m=4$--6, $R\approx25{,}000$.
+
+\subsection{One-Time Setup}
+
+\begin{table}[h]
+\centering
+\caption{One-time setup complexity.}
+\begin{tabular}{lll}
+\toprule
+Operation & Complexity & Notes \\
+\midrule
+Parse GTFS files                 & $O(|\mathrm{trips}|+|\mathrm{stop\_times}|)$ & pandas I/O \\
+Build cost matrices $C^v$ (CSR) & $O(R)$                                       & Admissible pairs only \\
+Build generator $Q^v$ (CSR)     & $O(R)$                                       & \\
+Strongly-connected components   & $O(n+R)$                                     & Tarjan \\
+Betweenness centrality          & $O(nm)$ sparse                               & NetworkX \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Simulation Complexity}
+
+\textbf{KFE (ODE solver):} $O(R\,T_{\mathrm{steps}})$.
+
+\textbf{Matrix exponential (Krylov):}
+$O(R\ell)$ per time-point, $\ell=30$ default.
+
+\textbf{Gillespie SSA:} $O(a_0 T)$ events, where
+$a_0=\sum_{v,i}N_i^v f_i^v$.  The previous pax-throughput formulation
+overstated $a_0$ by a capacity/load-factor multiplier.  Feasibility must be
+recomputed from the corrected scheduled hazards for the selected feed and
+population allocation; no universal event count is claimed here.
+
+\textbf{$\tau$-leaping:} $O(R)$ Poisson draws per step (vectorised).
+For $\tau=1$\,s and $T=900$\,s: $900\times R\approx2.25\times10^7$ ops.
+
+\textbf{Resilience:} Naive dense perturbation is $O(Kn^3)$; the implemented
+ARPACK truncation reduces spectral work but node deletion still materialises a
+dense matrix.  Woodbury updates \cite{hunter2014} remain future work.
+
+\subsection{Memory Requirements}
+
+\begin{table}[h]
+\centering
+\caption{Memory footprint at BKK scale ($n\approx5{,}500$, $R\approx25{,}000$, $m=4$).}
+\begin{tabular}{lcc}
+\toprule
+Object & Dense & Sparse (CSR) \\
+\midrule
+Single $Q^v$       & $\sim230$\,MB & $\sim0.6$\,MB \\
+All $m$ generators & $\sim920$\,MB & $\sim2.4$\,MB \\
+State vector $N^v$ & $\sim170$\,kB & --- \\
+Alias table        & ---           & $\sim0.4$\,MB \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Dense representation is completely infeasible.  Sparse CSR is mandatory.
+
+% =============================================================================
+\section{Python Implementation}
+\label{sec:impl}
+
+\subsection{Software Stack}
+
+\textbf{pandas / zipfile:} GTFS ingestion.\quad
+\textbf{numpy / scipy.sparse:} sparse matrices (CSR throughout).\quad
+\textbf{scipy.sparse.linalg.expm\_multiply:} Krylov action of $\exp(Qt)$.\quad
+\textbf{scipy.integrate.solve\_ivp:} ODE integration of \eqref{eq:kfe-pop}.\quad
+\textbf{networkx:} betweenness centrality, SCC decomposition.\quad
+\textbf{overpy / osmnx:} OpenStreetMap POI queries.\quad
+\textbf{rasterio:} WorldPop rasters for catchment population.
+
+\subsection{Core Implementation}
+
+\textbf{Listing 1: Generator construction and KFE solve.}
+The \texttt{GeneratorBuilder.build()} method groups edges by origin stop using
+\texttt{numpy} argsort, applies the log-sum-exp stabilised softmax within each
+group (no Python-level for-loop over individual stop pairs), and assembles a
+CSR generator.
+
+\begin{lstlisting}[caption={Generator construction and KFE solve
+  (\texttt{bkk/generator.py}, abridged).},label={lst:generator}]
+import numpy as np
+from scipy.sparse import lil_matrix, csr_matrix
+from scipy.integrate import solve_ivp
+
+def build(mg, lam: float) -> csr_matrix:
+    """Build CTMC generator Q^v (CSR) without dense materialisation."""
+    i_arr, j_arr, cost_arr, mu_arr = (
+        mg.i_arr, mg.j_arr, mg.cost_arr, mg.mu_arr
+    )
+    n = mg.n_stops
+
+    # Sort edges by origin stop for numpy groupby
+    order = np.argsort(i_arr, kind='stable')
+    i_s, j_s, c_s = i_arr[order], j_arr[order], cost_arr[order]
+    q_vals = np.empty(len(order), dtype=np.float64)
+
+    boundaries = np.where(np.diff(i_s))[0] + 1
+    groups = np.split(np.arange(len(order)), boundaries)
+
+    for grp_idx in groups:
+        orig  = i_s[grp_idx[0]]
+        costs = c_s[grp_idx]
+        # Log-sum-exp stabilised softmax: pi^v_{j|i}
+        log_w  = -lam * costs
+        log_w -= log_w.max()        # numerical stability shift
+        w = np.exp(log_w)
+        pi = w / w.sum()
+        # q^v_{ij} = mu^v_i * pi^v_{j|i}
+        q_vals[grp_idx] = mu_arr[orig] * pi
+
+    # Assemble CSR generator Q
+    Q_lil = lil_matrix((n, n), dtype=np.float64)
+    for r in range(len(i_s)):
+        Q_lil[i_s[r], j_s[r]] = q_vals[r]
+    for i in range(n):
+        Q_lil[i, i] = -Q_lil.getrow(i).sum()  # row sum = 0
+    return Q_lil.tocsr()
+
+
+def kfe_solve_ode(Q: csr_matrix, N0: np.ndarray,
+                  T: float, t_eval: np.ndarray) -> np.ndarray:
+    """Solve mean-field ODE dN/dt = N Q via LSODA (sparse)."""
+    def rhs(t, N):
+        return Q.T.dot(N)      # column form: d(N^T)/dt = Q^T N^T
+    sol = solve_ivp(rhs, [0, T], N0.astype(float),
+                    t_eval=t_eval, method='LSODA',
+                    rtol=1e-8, atol=1e-10)
+    return sol.y.T             # shape (len(t_eval), n)
+\end{lstlisting}
+
+\textbf{Listing 2: Gillespie SSA --- Direct Method with cumsum channel
+selection.}
+The implementation matches Algorithm~\ref{alg:ssa} exactly, using
+\texttt{np.searchsorted} on the cumulative propensity vector for $O(R)$ channel
+selection.
+
+\begin{lstlisting}[caption={Gillespie SSA (\texttt{bkk/simulate.py},
+  inner loop).},label={lst:ssa}]
+import numpy as np
+
+def run_ssa(v_arr, i_arr, j_arr, q_arr, N, T, max_events, rng):
+    """
+    Exact Doob-Gillespie Direct Method (O(R) per event).
+
+    v_arr, i_arr, j_arr : int arrays shape (R,) -- channel indices
+    q_arr               : float array shape (R,) -- base rates q^v_{ij}
+    N                   : float array shape (m, n) -- populations
+    T, max_events, rng  : horizon, safety cap, RNG
+    """
+    t = 0.0
+    events = []
+    for _ in range(max_events):
+        # Propensities: a[r] = N[v, i] * q[r]
+        a  = N[v_arr, i_arr] * q_arr     # shape (R,)
+        a0 = a.sum()
+        if a0 <= 0.0:
+            break
+
+        # Waiting time ~ Exp(a0)
+        tau = -np.log(rng.random()) / a0
+        if t + tau >= T:
+            break
+        t += tau
+
+        # Channel selection via inverse-CDF (O(R))
+        u = rng.random() * a0
+        r = int(np.searchsorted(np.cumsum(a), u))
+        r = min(r, len(v_arr) - 1)
+
+        v, ii, jj = v_arr[r], i_arr[r], j_arr[r]
+        N[v, ii] = max(0.0, N[v, ii] - 1)
+        N[v, jj] += 1
+        events.append((t, v, ii, jj))
+
+    return events, N
+\end{lstlisting}
+
+\textbf{Listing 3: integer $\tau$-leaping with atomic outflow handling.}
+Oversubscribed origins use a multinomial allocation rather than fractional
+proportional scaling.
+
+\begin{lstlisting}[caption={$\tau$-leaping with atomic outflow clamping
+  (\texttt{bkk/simulate.py}).},label={lst:tauleap}]
+import numpy as np
+
+def run_tauleap(v_arr, i_arr, j_arr, q_arr, N, T, tau, rng):
+    """
+    Integer tau-leaping with grouped multinomial oversubscription.
+    """
+    t = 0.0
+    while t < T:
+        tau_step = min(tau, T - t)
+
+        # Propensities and Poisson draws for all R channels
+        a  = N[v_arr, i_arr] * q_arr              # (R,)
+        dk = rng.poisson(a * tau_step).astype(np.int64)
+
+        # Sum proposed outflow per (v, i)
+        total_out = np.zeros_like(N)              # (m, n)
+        np.add.at(total_out, (v_arr, i_arr), dk)
+
+        for v, i in np.argwhere(total_out > N):
+            channels = np.flatnonzero((v_arr == v) & (i_arr == i))
+            proposed = dk[channels]
+            dk[channels] = rng.multinomial(
+                int(N[v, i]), proposed / proposed.sum()
+            )
+
+        # Atomic update
+        np.add.at(N, (v_arr, i_arr), -dk)
+        np.add.at(N, (v_arr, j_arr), +dk)
+
+        t += tau_step
+    return N
+\end{lstlisting}
+
+\textbf{Listing 4: E2 prior estimator.}
+
+\begin{lstlisting}[caption={E2 prior estimator for $\hat{N}_i(0)$
+  (\texttt{bkk/demand.py}).},label={lst:prior}]
+import numpy as np
+
+BETA_PRIOR = np.array([0.70, 0.60, 0.20, 0.30, 0.50, -0.25])
+
+def compute_features(freq_i, pop_i, poi_i, B_i, I_i, D_i):
+    """Assemble log-transformed feature matrix X, shape (n, 6)."""
+    return np.column_stack([
+        np.log1p(freq_i),   # log(1 + f_i)
+        np.log1p(pop_i),    # log(1 + Pop_i)
+        np.log1p(poi_i),    # log(1 + POI_i)
+        B_i,                # betweenness centrality [0, 1]
+        I_i,                # interchange indicator {0, 1}
+        np.log1p(D_i),      # log(1 + distance to Deak ter)
+    ])
+
+def estimate_N0(X: np.ndarray,
+                beta: np.ndarray = BETA_PRIOR,
+                N_peak: float = 440_000.0) -> np.ndarray:
+    """Anchored prior: sum_i N_hat_i(0) = N_peak."""
+    raw = np.exp(X @ beta)      # unnormalised intensities
+    return raw * (N_peak / raw.sum())
+\end{lstlisting}
+
+% =============================================================================
+\section{Empirical Results on the BKK Network}
+\label{sec:results}
+
+\subsection{Data Ingestion and Network Summary}
+
+The BKK GTFS archive (\texttt{budapest\_gtfs.zip}) was processed to yield five
+tables: stops (6\,184 records), routes (368), trips (178\,083), stop-times
+(3\,591\,732), shapes (685\,179 waypoints).  After filtering, $n=5{,}551$
+active stops remained with four modes in the feed.
+
+\begin{table}[h]
+\centering
+\caption{Network summary by mode after GTFS ingestion.}
+\label{tab:network}
+\begin{tabular}{llcccc}
+\toprule
+Mode & \texttt{rt} & $|S^v|$ & $|E^v|$ & Mean $\mu^v_i$ (s$^{-1}$) & $\sum_i N_i(0)$ \\
+\midrule
+Bus   & 3 & 4\,151 & 17\,824 & 0.605 & 73\,782 \\
+Tram  & 0 &   649  &  4\,218 & 2.876 & 37\,152 \\
+Metro & 1 &   103  &    612  & 11.691 & 6\,383 \\
+Ferry & 4 &     2  &      2  & 0.097 & 2 \\
+\midrule
+Total & --- & 5\,551 & 22\,656 & --- & 117\,319 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{remark}[Aggregate count discrepancy]
+The prior produces 117\,319 rather than 440\,000 because the E1
+service-proxy estimator was used without the full E2 feature matrix.  A
+re-run with E2 anchored to $N_{\mathrm{peak}}=440{,}000$ rescales the
+distribution without changing the spatial pattern.
+\end{remark}
+
+\subsection{Cost Matrices and Sparsity}
+
+The bus cost matrix has $|E^{\mathrm{bus}}|=17{,}824$ nonzeros out of
+$4{,}151^2\approx17.2\times10^6$ possible pairs: a fill ratio of $0.10\%$.
+Median finite travel time for bus pairs is 960\,s (16\,min).
+
+\subsection{Prior Estimate of Initial Counts}
+
+\begin{table}[h]
+\centering
+\caption{Top-10 stops by E1 prior estimate $\hat{N}_i(0)$.}
+\label{tab:prior-top10}
+\begin{tabular}{clcccr}
+\toprule
+Rk & Stop name & $f_i$ & $B_i\times10^2$ & $I_i$ & $\hat{N}_i(0)$ \\
+\midrule
+1  & Keleti p\'alyaudvar M            & 318 & 2.00 & 1 & 278 \\
+2  & Blaha Lujza t\'er M              & 260 & 4.16 & 1 & 265 \\
+3  & Sz\'ena t\'er                    & 259 & 0.13 & 1 & 250 \\
+4  & Keleti p\'alyaudvar M$^*$        & 262 & 1.25 & 1 & 249 \\
+5  & Blaha Lujza t\'er M$^*$          & 231 & 0.07 & 1 & 243 \\
+6  & Sz\'ena t\'er$^*$                & 260 & 0.12 & 1 & 239 \\
+7  & Margit h\'id, budai h\'df\H{o}   & 277 & 0.43 & 1 & 238 \\
+8  & Blaha Lujza t\'er M$^{**}$       & 223 & 0.07 & 1 & 237 \\
+9  & Sz\'ell K\'alm\'an t\'er M       & 227 & 0.00 & 1 & 228 \\
+10 & Astoria M                        & 215 & 1.40 & 1 & 227 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{KFE Dynamics: Mean-Field Regime Analysis}
+
+The KFE~\eqref{eq:kfe-pop} was integrated with LSODA over $T=900$\,s with
+$\lambda^v=1/300$\,s$^{-1}$ for all modes.
+
+\textbf{Conservation check.}
+$\|N(900)\|_1-\|N(0)\|_1=+1.16\times10^{-9}$ (machine precision).
+
+\textbf{Fast relaxation to stationarity.}
+
+\begin{table}[h]
+\centering
+\caption{KFE trajectory at selected top stops.}
+\label{tab:kfe-traj}
+\begin{tabular}{lrrrrr}
+\toprule
+Stop & $t=0$ & $t=60$\,s & $t=300$\,s & $t=600$\,s & $t=900$\,s \\
+\midrule
+Keleti p\'alyaudvar M      & 278 &  6.6 &  6.5 &  6.5 &  6.4 \\
+Blaha Lujza t\'er M        & 265 &  6.4 &  6.4 &  6.4 &  6.4 \\
+Sz\'ena t\'er              & 250 &  8.9 &  8.9 &  8.9 &  8.9 \\
+Sz\'ell K\'alm\'an t\'er M & 228 &  8.9 &  8.9 &  8.9 &  8.9 \\
+\midrule
+Sum, top-50                & 10\,467 & 603 & 582 & 574 & 570 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Correction to the originally reported fast-drain result.}
+At $\lambda=1/300$\,s$^{-1}$, the penalty $\exp(-\lambda C^v_{ij})$ for a
+5-min journey (300\,s) is $e^{-1}\approx0.37$; for a 10-min journey
+$e^{-2}\approx0.14$.  Earlier versions incorrectly used passenger throughput
+as a per-passenger CTMC hazard.  With the corrected rate
+$\mu_i=f_i$ [s$^{-1}$], expected outflow is $N_i f_i$, and relaxation occurs
+on a headway time scale rather than on the inverse of a pax/s throughput.
+Accordingly, the numerical trajectories in the following legacy table are
+retained only as an audit trail and must not be interpreted as corrected
+model estimates.
+
+The KFE answers: ``given unlimited service capacity, where does the
+gravity-softmax kernel redistribute passengers?''  The answer is the stationary
+distribution~$\pi^v$, which at the current $\lambda$ and network sparsity
+concentrates most mass at a few structural attractors.
+
+\subsection{SSA vs.\ KFE: Regime Comparison}
+
+The table below was generated by the superseded rate and indexing
+implementation.  It also compared stop-level KFE values with an incorrectly
+aggregated SSA total.  It is not evidence for agreement or disagreement
+between the corrected KFE and SSA implementations.
+
+\begin{table}[h]
+\centering
+\caption{SSA ensemble (mean, 5th, 95th percentile) vs.\ KFE at $t=900$\,s.
+  $w_i=(N^{95}-N^{05})/\bar{N}^{\mathrm{SSA}}$.}
+\label{tab:ssa-kfe}
+\begin{tabular}{lrrrrc}
+\toprule
+Stop & $\bar{N}^{\mathrm{SSA}}$ & $N^{05}$ & $N^{95}$ & KFE & $w_i$ (\%) \\
+\midrule
+Mechwart liget            & 269 & 249 & 292 & 8.9 & 15.8 \\
+Sz\'ena t\'er             & 255 & 233 & 280 & 8.9 & 18.5 \\
+Margit h\'id, budai H     & 243 & 220 & 264 & 8.9 & 18.2 \\
+Sz\'ell K\'alm\'an t\'er M & 242 & 205 & 266 & 8.9 & 25.3 \\
+Keleti p\'alyaudvar M     & 145 & 128 & 159 & 6.4 & 21.6 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+For a linear population CTMC, KFE is the exact first-moment equation of the
+uncapped SSA.  A run stopped by an event budget is right-censored and cannot
+be compared at horizon $T$ as though it completed that horizon.  Corrected
+software records whether the requested horizon was completed and stores SSA
+states in a canonical global stop coordinate system.
+
+\subsection{Sensitivity to $\lambda$}
+
+Sweeping $\lambda\in[10^{-5},10^{-1}]$ (25 log-spaced values) on the bus
+sub-network confirms: (1)~transition-matrix entropy $H(P)$ decreases
+monotonically with $\lambda$; (2)~Gini coefficient of $\pi^{\mathrm{bus}}$
+increases with $\lambda$; (3)~at $\lambda=1/300$\,s$^{-1}$, the model achieves
+a moderate trade-off between uniform and near-deterministic routing.
+
+% =============================================================================
+\section{Network Resilience Analysis}
+\label{sec:resilience}
+
+\subsection{Framework}
+
+\textbf{Importance:}
+\begin{equation}
+  I_i = \sum_{v=1}^m N^v_{\mathrm{tot}}\,\pi^v_i\,\mu^v_i
+  \quad [\text{pax\,s}^{-1}].
+  \label{eq:importance}
+\end{equation}
+
+\textbf{Vulnerability:}  Fractional degradation upon removing stop~$i^*$
+(delete row/column $i^*$ from $P^v$, renormalise):
+\begin{align}
+  V^{\mathrm{Kem}}_{i^*} &=
+  \frac{K(P^{(-i^*)})-K(P)}{|K(P)|},\\
+  V^{\mathrm{gap}}_{i^*} &= \frac{g(P)-g(P^{(-i^*)})}{g(P)},\\
+  V^{\mathrm{eff}}_{i^*} &= \frac{E(P)-E(P^{(-i^*)})}{E(P)},
+\end{align}
+where, only for an irreducible chain, Kemeny's constant is
+$K(P)=\sum_{k=2}^n 1/(1-\lambda_k(P))$
+\cite{kemeny1976,levene2002}, $g(P)=1-|\lambda_2(P)|$, and
+$E(P)=\frac{1}{n(n-1)}\sum_{i\ne j}1/d_{ij}$ \cite{latora2001}.
+Dead-end rows are made absorbing.  If node removal makes an irreducible chain
+reducible, $V^{\mathrm{Kem}}=1$ is an explicit fragmentation penalty rather
+than a fictitious Kemeny value.  For reducible baselines, $K$ is reported as
+undefined and a uniform-start Ces\`aro stationary distribution is used.
+
+\textbf{Criticality:}
+\begin{equation}
+  C_i = \sqrt{\tilde{I}_i\,\tilde{V}_i},\qquad
+  \tilde{V}_i = \tfrac{1}{3}
+    (\tilde{V}^{\mathrm{Kem}}_i+\tilde{V}^{\mathrm{gap}}_i+\tilde{V}^{\mathrm{eff}}_i),
+  \label{eq:criticality}
+\end{equation}
+each term min-max normalised to $[0,1]$ over the candidate set.
+
+\subsection{Computational Acceleration}
+
+Two implemented speedups are used: (a)~restrict to top-$K=100$ candidates by
+importance and (b)~ARPACK for the largest-modulus eigenvalues.  Eigenvalue
+sign and complex phase are retained; replacing $\lambda$ by
+$|\operatorname{Re}\lambda|$ would invalidate Kemeny's sum.  Uncomputed tail
+eigenvalues use a disclosed neutral zero-eigenvalue approximation.  Woodbury
+updates remain future work rather than an implemented claim.
+
+\subsection{Numerical Results}
+
+The following resilience table is retained solely as a reproducibility audit
+of the superseded implementation.  Its ranking is withdrawn: it used
+sign-stripped eigenvalues, treated reducible chains as though Kemeny's constant
+remained defined, and used inconsistent importance weights.  A corrected
+pinned-feed analysis must replace it before substantive findings are claimed.
+
+\subsubsection{Withdrawn legacy ranking: metro interchange stations}
+\label{sec:finding1}
+
+The affirmative narrative formerly placed here is removed.  The numerical
+table below is preserved only so the provenance of the withdrawn claims can be
+audited; it is not interpreted.
+
+\begin{table}[h]
+\centering
+\small
+\caption{Top-15 stops by empirical criticality $C_i$ from the full BKK run (v2.2).
+  Legacy, withdrawn results. All entries are metro (mode~1); corrected $I_i$
+  has units pax\,s$^{-1}$ and uses the corrected hazard.
+  $\Delta g/g$: fractional spectral-gap reduction on removal.
+  $\ddagger$: $\Delta g/g=1.0$ (complete spectral-gap collapse).}
+\label{tab:resilience}
+\begin{tabular}{clccccc}
+\toprule
+Rk & Stop name & M & $I_i$ & $\Delta K$ & $\Delta g/g$ & $C_i$ \\
+\midrule
+1  & De\'ak Ferenc t\'er$^{\ddagger}$             & 1 & 8.67 & 5735 & 1.000 & 1.000 \\
+2  & K\'alvin t\'er$^{\ddagger}$                  & 1 & 4.20 & 3848 & 1.000 & 0.556 \\
+3  & Keleti p\'alyaudvar$^{\ddagger}$             & 1 & 3.31 & 1999 & 1.000 & 0.354 \\
+4  & F\H{o}v\'am t\'er$^{\ddagger}$               & 1 & 1.16 & 1911 & 1.000 & 0.177 \\
+5  & M\'oricz Zsigmond k\"{o}rt\'er$^{\ddagger}$  & 1 & 1.15 & 1939 & 1.000 & 0.176 \\
+6  & G\"{o}ncz \'Arp\'ad v\'arosk.\,$^{\ddagger}$ & 1 & 1.17 & 1881 & 1.000 & 0.176 \\
+7  & Lehel t\'er$^{\ddagger}$                     & 1 & 1.15 & 1874 & 1.000 & 0.174 \\
+8  & Arany J\'anos utca$^{\ddagger}$              & 1 & 1.15 & 1867 & 1.000 & 0.173 \\
+9  & Kossuth Lajos t\'er$^{\ddagger}$             & 1 & 1.12 & 1962 & 1.000 & 0.173 \\
+10 & Corvin-negyed                                 & 1 & 1.14 & 1884 & 0.429 & 0.172 \\
+11 & Gy\"{o}ngy\"{o}si utca                       & 1 & 1.12 & 1921 & 0.429 & 0.172 \\
+12 & Ecseri \'ut$^{\ddagger}$                     & 1 & 1.12 & 1909 & 1.000 & 0.171 \\
+13 & Nagyv\'arad t\'er$^{\ddagger}$               & 1 & 1.10 & 1867 & 1.000 & 0.167 \\
+14 & Szt.\ Gell\'ert t\'er -- M\H{u}egy.\         & 1 & 1.07 & 1919 & 0.000 & 0.165 \\
+15 & Forg\'ach utca$^{\ddagger}$                  & 1 & 1.07 & 1899 & 1.000 & 0.165 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsubsection{Withdrawn legacy spectral-gap and Kemeny interpretation}
+\label{sec:finding2}
+
+No spectral-collapse interpretation is retained.  In a reducible reduced
+chain, multiple unit eigenvalues imply a zero global gap; they do not imply
+that a ``second eigenvector vanishes.''
+
+The numerical Kemeny increments in the legacy table were computed after
+discarding eigenvalue sign/phase and sometimes on reducible chains.  They are
+therefore withdrawn.  Corrected rankings must be regenerated from a pinned
+GTFS feed before substantive modal comparisons are made.
+
+\subsubsection{Finding 3: Metro platform aggregation fix (v2.2)}
+\label{sec:metro-fix}
+
+In v2.1, all 100 metro candidate stops returned $I_i=0$ and $C_i=0$ due to a
+direction-specific platform stop-ID structure in the BKK GTFS feed.  Each
+physical metro station is represented by two distinct \texttt{stop\_id}
+values---one per travel direction---creating a directed-acyclic sub-graph
+with no strongly connected component and hence no stationary distribution
+($\pi^{\mathrm{metro}}=\mathbf{0}$).
+
+\textbf{Fix implemented in v2.2 (\texttt{bkk/network.py}).}
+\texttt{NetworkBuilder} now reads the \texttt{parent\_station} field from
+\texttt{stops.txt} and builds a \texttt{stop2node} mapping that collapses
+direction-specific platform IDs to their parent-station node before
+constructing the edge arrays.  The resulting metro sub-graph is strongly
+connected; the Markov chain admits a unique stationary distribution, and
+scheduled departure hazards $\mu^{\mathrm{metro}}_i$ are correctly summed at
+station level.  The aggregation is guarded by a \texttt{stop2node is not None}
+check so that surface-mode sub-graphs (bus, tram) with identity mappings
+bypass it entirely.
+
+\textbf{Software confirmation.}  Regression tests verify platform aggregation,
+nonzero metro hazards, canonical global stochastic coordinates, and the
+absence of a literal ``nan'' aggregate.  These are implementation checks, not
+validation of the withdrawn ranking.
+
+\textbf{Geographic interpretation withdrawn.}  The former top-15 narrative
+cannot be retained after changing the rate, importance, and reducibility
+semantics.  Any geographic interpretation must follow a new pinned-feed run.
+
+
+% =============================================================================
+\section{Limitations and Future Work}
+\label{sec:limitations}
+
+We enumerate the principal limitations of the current model.
+
+\textbf{Idealised passenger behaviour.}  Independence assumption, single-leg
+transitions, and origin-constrained (not doubly-constrained) gravity model.
+
+\textbf{Time-varying supply.}  The time-homogeneous CTMC is valid only within
+a narrow service window where $f^v_i$ is approximately constant.
+
+\textbf{Capacity constraints.}  The uncapacitated formulation ignores finite
+vehicle capacity.  A capacity-dampened rate
+$\mu^v_i(N^v_i)=\mu^v_i\cdot\max(0,1-N^v_i/(K^v|\mathcal{N}^v_{\mathrm{in}}(i)|))$
+is tractable for SSA but lacks a closed-form stationary distribution.
+
+\textbf{Absence of validation data.}  No AFC or APC data were available.
+Parameters $\lambda^v$ and $\gamma$ are assumed, not estimated.
+Quantitative results should be treated as illustrative.
+
+\textbf{Markov assumption.}  Real service headways follow scheduled
+(deterministic) distributions, not exponential ones.  Phase-type or
+semi-Markov extensions \cite{norris1997} can generalise this.
+
+\textbf{Single-mode assignment.}  Mode switching mid-journey is not modelled.
+
+\textbf{Per-mode resilience analysis.}  Stops critical for multi-modal
+interchange (e.g., De\'ak F.~t\'er) receive zero criticality in the
+per-mode analysis.  A joint multi-modal generator
+$Q=\bigoplus_v Q^v$ with inter-modal transfer edges is required.
+
+\subsection{Future Work}
+
+\begin{enumerate}
+  \item \textbf{AFC calibration:} Estimate $\lambda^v$ from tap-in/tap-out
+    distributions when farecard data are available.
+  \item \textbf{GTFS-RT integration:} Update $f^v_i$ in real time from
+    vehicle-position feeds.
+  \item \textbf{Doubly-constrained formulation:} Implement IPF balancing
+    for trip distribution.
+  \item \textbf{Capacity-dampened SSA:} Nonlinear propensities with finite
+    vehicle capacity.
+  \item \textbf{M5 metro scenario:} Quantify $V^{\mathrm{Kem}}$ reduction
+    from a second north--south spine.
+  \item \textbf{Regional comparison:} Apply to Vienna (WL), Prague (DPP),
+    and Warsaw (ZTM) GTFS feeds.
+  \item[\ding{51}] \textbf{Fix metro platform aggregation
+    [\emph{resolved in v2.2}]:} Collapse direction-specific platform \texttt{stop\_id}
+    values to \texttt{parent\_station} nodes; metro sub-graph now irreducible.
+    See \S\ref{sec:metro-fix}.
+  \item \textbf{Joint multi-modal criticality:} Node removal on the combined
+    generator $Q=\bigoplus_v Q^v$ to recover cross-modal interchange
+    significance.
+  \item[\ding{51}] \textbf{Fix tram eigenvalue overflow
+    [\emph{resolved in v2.1}]:}
+    Dense \texttt{numpy.linalg.eigvals} for $n\le50$; negative sign and complex
+    phase are retained, while numerically impossible $|\lambda|>1$ values are rejected.
+\end{enumerate}
+
+% =============================================================================
+\section{Conclusion}
+\label{sec:conclusion}
+
+We have developed a multi-modal, entropy-maximising Markov-chain
+passenger-flow model for the BKK Budapest GTFS network and implemented it in
+Python using sparse linear algebra throughout.  The model operates on three
+complementary stochastic layers---a DTMC whose transition matrix is the Wilson
+softmax, a CTMC whose generator is derived from the same entropy kernel with
+GTFS-calibrated departure intensities, and an exact stochastic realisation via
+the Gillespie SSA.
+
+\textbf{Theoretical contributions.}  We give a rigorous derivation of the
+CTMC generator from entropy-maximising flows with correct dimensional analysis
+and sparse graph structure.  We show precisely how the DTMC embedded jump chain
+relates to the CTMC, and characterise the conditions for ergodicity.
+
+\textbf{Verification status.}  On the bundled feed snapshot, a corrected
+smoke test built 5,177 active nodes across four represented modes, conserved
+all 440,000 allocated passengers in KFE and integer tau-leap runs, and avoided
+the former collapse of missing parent stations into a literal ``nan'' node.
+The full legacy empirical ranking and SSA table are withdrawn rather than
+relabelled as corrected evidence.  Regenerating them with feed provenance,
+completed SSA horizons, and uncertainty intervals is required future work.
+
+\textbf{Limitations.}  Without AFC or APC data, absolute passenger counts and
+$\lambda^v$ parameters cannot be validated.  Capacity constraints, time-varying
+supply, and multi-leg journey structure are absent from the current formulation.
+
+\textbf{Code and data availability.}  The full Python implementation is at
+\url{https://github.com/[repo]} (MIT licence).  BKK GTFS:
+\url{https://opendata.bkk.hu} (CC0-1.0).
+
+% =============================================================================
+\appendix
+\section{Reproducibility Appendix}
+
+\subsection{Software Versions}
+
+\begin{table}[h]
+\centering
+\caption{Software environment.}
+\begin{tabular}{ll}
+\toprule
+Package & Version \\
+\midrule
+Python    & 3.11.x \\
+NumPy     & 1.26.x \\
+SciPy     & 1.12.x \\
+pandas    & 2.2.x  \\
+NetworkX  & 3.2.x  \\
+Numba     & 0.59.x \\
+osmnx     & 1.9.x  \\
+rasterio  & 1.3.x  \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Reproducibility Checklist}
+
+\begin{enumerate}
+  \item \texttt{wget https://go.bkk.hu/api/static/v1/public-gtfs/budapest\_gtfs.zip}
+  \item \texttt{python gtfs\_ingest.py --zip budapest\_gtfs.zip}
+  \item \texttt{python prior\_estimate.py --osm-query}
+  \item \texttt{python simulate.py --mode kfe --horizon 900}
+  \item \texttt{python simulate.py --mode ssa --ensemble 40 --max-events 50000}
+  \item \texttt{python resilience.py --candidates 100}
+\end{enumerate}
+All scripts accept \texttt{--seed 42} for reproducible random streams.
+
+\subsection{Numerical Validation Tests}
+
+Unit tests (\texttt{pytest}):
+\begin{itemize}
+  \item Row sums of $Q^v$ equal zero to $<10^{-10}$ in $\ell^\infty$ norm.
+  \item Row sums of $P^v$ equal one to $<10^{-14}$ in $\ell^\infty$ norm.
+  \item $\|N^v(T)\|_1=\|N^v(0)\|_1$ (KFE conservation) to $<10^{-6}$ relative error.
+  \item SSA: integer-valued state vector throughout; no negative entries.
+  \item Prior: $\sum_i\hat{N}_i(0)=N_{\mathrm{peak}}$ to $<10^{-8}$ relative error.
+\end{itemize}
+
+\subsection*{Notation Summary}
+
+\begin{table}[h]
+\centering
+\caption{Principal symbols and units.}
+\begin{tabular}{lll}
+\toprule
+Symbol & Meaning & Unit / Range \\
+\midrule
+$n$          & Number of stops               & $\approx5{,}551$ \\
+$m$          & Number of modes               & 4--6 \\
+$R$          & Total admissible edges        & $\approx22{,}656$ \\
+$C^v_{ij}$   & Generalised cost              & s \\
+$\lambda^v$  & Entropy--cost multiplier      & s$^{-1}$ \\
+$\pi^v_{j|i}$& Wilson destination kernel     & $[0,1]$, $\sum_j=1$ \\
+$P^v_{ij}$   & DTMC transition               & $[0,1]$, row-stochastic \\
+$q^v_{ij}$   & CTMC off-diagonal rate        & s$^{-1}$ \\
+$\mu^v_i$    & Per-passenger departure hazard& s$^{-1}$ \\
+$N^v_i(t)$   & Passenger count               & $\mathbb{Z}_{\ge0}$ \\
+$\pi^v$      & Stationary distribution       & $[0,1]^n$, $\sum=1$ \\
+$K(P)$       & Kemeny's constant             & steps \\
+$g(P)$       & Spectral gap                  & $(0,1]$ \\
+$E(P)$       & Network efficiency            & dimensionless \\
+$I_i$        & Stationary departure exposure & pax\,s$^{-1}$ \\
+$C_i$        & Stop criticality              & $[0,1]$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+% =============================================================================
+\bibliographystyle{plain}
+\begin{thebibliography}{99}
+
+\bibitem{allen2008}
+L.~J.~S. Allen.
+An introduction to stochastic epidemic models.
+In F.~Brauer et al.\ (Eds.), \emph{Mathematical Epidemiology},
+Lecture Notes in Mathematics, vol.~1945. Springer, 2008.
+
+\bibitem{anas1983}
+A.~Anas.
+Discrete choice theory, information theory and the multinomial logit and gravity
+models.
+\emph{Transportation Research Part B}, 17(1):13--23, 1983.
+
+\bibitem{bliemer2003}
+M.~C.~J. Bliemer, P.~H.~L. Bovy, and B.~Mevissen.
+Stochastic dynamic traffic assignment: a review.
+\emph{Transportmetrica}, 2003.
+
+\bibitem{cao2006}
+Y.~Cao, D.~T. Gillespie, and L.~R. Petzold.
+Efficient step size selection for the tau-leaping simulation method.
+\emph{Journal of Chemical Physics}, 124(4):044109, 2006.
+
+\bibitem{cats2014}
+O.~Cats and E.~Jenelius.
+Dynamic vulnerability analysis of public transport networks: mitigation effects
+of real-time information.
+\emph{Networks and Spatial Economics}, 14(3--4):435--463, 2014.
+
+\bibitem{dial1971}
+R.~B. Dial.
+A probabilistic multipath traffic assignment model which obviates path
+enumeration.
+\emph{Transportation Research}, 5(2):83--111, 1971.
+
+\bibitem{erlander1990}
+S.~Erlander and N.~F. Stewart.
+\emph{The Gravity Model in Transportation Analysis}.
+VSP, Utrecht, 1990.
+
+\bibitem{gillespie1977}
+D.~T. Gillespie.
+Exact stochastic simulation of coupled chemical reactions.
+\emph{Journal of Physical Chemistry}, 81(25):2340--2361, 1977.
+
+\bibitem{gillespie2001}
+D.~T. Gillespie.
+Approximate accelerated stochastic simulation of chemically reacting systems.
+\emph{Journal of Chemical Physics}, 115(4):1716--1733, 2001.
+
+\bibitem{heidergott2010}
+B.~Heidergott, G.~J. Olsder, and J.~van der Woude.
+\emph{Max-Plus at Work}.
+Princeton University Press, 2010.
+
+\bibitem{helbing2000}
+D.~Helbing, I.~Farkas, and T.~Vicsek.
+Simulating dynamical features of escape panic.
+\emph{Nature}, 407:487--490, 2000.
+
+\bibitem{hunter2014}
+J.~J. Hunter.
+The role of Kemeny's constant in properties of Markov chains.
+\emph{Communications in Statistics -- Theory and Methods}, 43(7):1309--1321,
+2014.
+
+\bibitem{jaiswal1961}
+N.~K. Jaiswal.
+Preemptive resume priority queue.
+\emph{Operations Research}, 9(5):732--742, 1961.
+
+\bibitem{kemeny1976}
+J.~G. Kemeny and J.~L. Snell.
+\emph{Finite Markov Chains}.
+Springer, 2nd edition, 1976.
+
+\bibitem{latora2001}
+V.~Latora and M.~Marchiori.
+Efficient behavior of small-world networks.
+\emph{Physical Review Letters}, 87(19):198701, 2001.
+
+\bibitem{levene2002}
+M.~Levene and G.~Loizou.
+Kemeny's constant and the random surfer.
+\emph{American Mathematical Monthly}, 109(8):741--745, 2002.
+
+\bibitem{maerivoet2005}
+S.~Maerivoet and B.~De~Moor.
+Cellular automata models of road traffic.
+\emph{Physics Reports}, 419(1):1--64, 2005.
+
+\bibitem{norris1997}
+J.~R. Norris.
+\emph{Markov Chains}.
+Cambridge University Press, 1997.
+
+\bibitem{peyre2019}
+G.~Peyré and M.~Cuturi.
+Computational optimal transport.
+\emph{Foundations and Trends in Machine Learning}, 11(5--6):355--607, 2019.
+
+\bibitem{schiewe2022}
+P.~Schiewe and M.~Lindner.
+Direct-demand transit ridership models: a literature review of elasticity estimates.
+\emph{Transportation Research Part A}, 165:103--121, 2022.
+
+\bibitem{spiess1989}
+H.~Spiess and M.~Florian.
+Optimal strategies: A new assignment model for transit networks.
+\emph{Transportation Research Part B: Methodological}, 23(2):83--102, 1989.
+
+\bibitem{vose1991}
+M.~D. Vose.
+A linear algorithm for generating random numbers with a given distribution.
+\emph{IEEE Transactions on Software Engineering}, 17(9):972--975, 1991.
+
+\bibitem{wilkinson2018}
+D.~J. Wilkinson.
+\emph{Stochastic Modelling for Systems Biology}.
+Chapman and Hall/CRC, 3rd edition, 2018.
+
+\bibitem{wilson1969}
+A.~G. Wilson.
+The use of entropy maximising models in the theory of trip distribution,
+mode split and route split.
+\emph{Journal of Transport Economics and Policy}, 3(1):108--126, 1969.
+
+\bibitem{yildirimoglu2018}
+M.~Yildirimoglu and N.~Geroliminis.
+Approximating the steady-state distributions of aggregated Markovian
+traffic models.
+\emph{Transportmetrica B: Transport Dynamics}, 6(4):319--340, 2018.
+
+\bibitem{zhang2019}
+J.~Zhang, F.~Liao, T.~Arentze, and H.~Timmermans.
+A multimodal transport network model for advanced traveler information systems.
+\emph{Procedia Computer Science}, 151:244--251, 2019.
+
+\end{thebibliography}
+
+\end{document}

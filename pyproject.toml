@@ -1,0 +1,62 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "bkk-markov-flow"
+version = "2.0.0"
+description = "Multi-modal Markov-chain passenger-flow model for the BKK Budapest GTFS network"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [{ name = "Transport Modelling Working Group" }]
+keywords = ["GTFS", "Markov chain", "CTMC", "Gillespie", "Budapest", "transit"]
+
+dependencies = [
+    "numpy>=1.26",
+    "scipy>=1.12",
+    "pandas>=2.2",
+    "networkx>=3.2",
+    "requests>=2.31",
+    "numba>=0.59",
+    "tqdm>=4.66",
+]
+
+[project.optional-dependencies]
+geo = [
+    "osmnx>=1.9",
+    "rasterio>=1.3",
+    "pyproj>=3.6",
+    "shapely>=2.0",
+]
+viz = [
+    "matplotlib>=3.8",
+    "seaborn>=0.13",
+    "plotly>=5.20",
+    "folium>=0.16",
+]
+dev = [
+    "pytest>=8.0",
+    "pytest-cov>=4.1",
+    "ruff>=0.3",
+    "mypy>=1.9",
+]
+all = ["bkk-markov-flow[geo,viz,dev]"]
+
+[project.scripts]
+bkk-download  = "bkk.cli:cmd_download"
+bkk-build     = "bkk.cli:cmd_build"
+bkk-simulate  = "bkk.cli:cmd_simulate"
+bkk-resilience = "bkk.cli:cmd_resilience"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["bkk*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts   = "-v --tb=short"
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
