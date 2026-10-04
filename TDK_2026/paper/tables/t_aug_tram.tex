@@ -1,0 +1,19 @@
+\begin{table}[htbp]
+\centering
+\footnotesize
+\begin{tabular}{r>{\raggedright\arraybackslash}p{5.0cm}rrr>{\raggedright\arraybackslash}p{3.0cm}rr}
+\toprule
+$b$ & Added link & km & $\bar V$ & $V_{\max}$ & Worst failure & $J$ & $-\Delta J$ (\%) \\
+\midrule
+0 & \emph{current network} & --- & 0.024 & 0.089 & Lehel utca / R\'obert K\'aroly k\"or\'ut & 0.057 & --- \\
+1 & V\'ag\'any utca / R\'obert K\'aroly k\"or\'ut -- Hun utca & 0.47 & 0.024 & 0.086 & Sz\'ell K\'alm\'an t\'er M & 0.055 & 3.5 \\
+2 & Batthy\'any t\'er M+H -- D\'eli p\'alyaudvar M & 1.25 & 0.023 & 0.080 & Sz\'ell K\'alm\'an t\'er M & 0.052 & 8.6 \\
+3 & Oktogon M -- Lehel t\'er M & 1.30 & 0.021 & 0.080 & Sz\'ell K\'alm\'an t\'er M & 0.051 & 10.7 \\
+4 & Blaha Lujza t\'er M -- K\'alvin t\'er M & 1.07 & 0.020 & 0.080 & Sz\'ell K\'alm\'an t\'er M & 0.050 & 12.3 \\
+5 & Budafoki \'ut / Domb\'ov\'ari \'ut -- Budafoki \'ut / Szer\'emi sor & 0.47 & 0.019 & 0.079 & Sz\'ell K\'alm\'an t\'er M & 0.049 & 13.1 \\
+\bottomrule
+\end{tabular}
+\caption{Tram: greedy robustness-driven link additions. Each row adds one bidirectional link to all previous ones. $\bar V$ and $V_{\max}$ are the mean and maximum demand-weighted vulnerability over single-station failures, $J=\tfrac12(\bar V+V_{\max})$, and the last column is the cumulative reduction of $J$.}
+\label{tab:aug-tram}
+\forras{own computation from the BKK GTFS Schedule feed (CC0-1.0), \texttt{scripts/paper\_augment.py}}
+\end{table}

@@ -1,0 +1,22 @@
+\begin{table}[htbp]
+\centering
+\footnotesize
+\begin{tabular}{l>{\raggedright\arraybackslash}p{5.4cm}rrr>{\raggedright\arraybackslash}p{3.0cm}r}
+\toprule
+Layer & Project / next link & km & $\bar V$ & $V_{\max}$ & Worst failure & $-\Delta J$ (\%) \\
+\midrule
+Metro & \emph{M5 inner section only} & --- & 0.052 & 0.320 & K\'alvin t\'er & $27.8$ \\
+ & +1: Astoria -- Corvin-negyed & 1.21 & 0.050 & 0.181 & K\'alvin t\'er & $55.1$ \\
+ & +2: Szent Gell\'ert t\'er - M\H{u}egyetem -- D\'eli p\'alyaudvar & 2.92 & 0.043 & 0.139 & Corvin-negyed & $64.7$ \\
+ & +3: V\"or\"osmarty utca -- Semmelweis Klinik\'ak & 2.88 & 0.039 & 0.112 & Lehel t\'er & $70.6$ \\
+\midrule
+Tram & \emph{Pesti fon\'od\'o only} & --- & 0.021 & 0.096 & Lehel utca / R\'obert K\'aroly k\"or\'ut & $-2.7$ \\
+ & +1: V\'ag\'any utca / R\'obert K\'aroly k\"or\'ut -- Hun utca & 0.47 & 0.021 & 0.087 & Sz\'ell K\'alm\'an t\'er M & $5.3$ \\
+ & +2: Blaha Lujza t\'er M -- K\'alvin t\'er M & 1.07 & 0.020 & 0.086 & Sz\'ell K\'alm\'an t\'er M & $6.7$ \\
+ & +3: Budafoki \'ut / Domb\'ov\'ari \'ut -- Budafoki \'ut / Szer\'emi sor & 0.47 & 0.019 & 0.085 & Sz\'ell K\'alm\'an t\'er M & $7.5$ \\
+\bottomrule
+\end{tabular}
+\caption{Suggested next links once the planned project is built: greedy additions conditional on the project's links. $-\Delta J$ is measured against the current network.}
+\label{tab:aug-next}
+\forras{own computation from the BKK GTFS Schedule feed (CC0-1.0), \texttt{scripts/paper\_augment.py}}
+\end{table}

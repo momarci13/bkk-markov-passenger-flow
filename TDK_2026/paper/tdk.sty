@@ -1,0 +1,181 @@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% tdk.sty --- Corvinus TDK 2025/26 formai követelmények / formatting rules
+%%
+%% Implements, verbatim, the formal requirements of the BCE TDK 2025/26
+%% versenyfelhívás:
+%%   "A4-es formátum, a margók mérete egységesen 2,5 cm. A szöveg formázása:
+%%    12-es betűméret, Times New Roman betűtípus, 1,5-ös sortávolság, sorkizárt
+%%    igazítás. Az oldalszám a lap aljára, középre kerüljön, az oldalszámozás a
+%%    Bevezetéssel 1. oldalszámmal kezdődik. Az alcímek, fejezetcímek jelzése
+%%    decimális számokkal történjen (I. Elsőrendű; I.2. Másodrendű;
+%%    I.2.3. Harmadrendű)."
+%%   "A borítón kérjük feltüntetni 14-es betűnagysággal a szerző(k) nevét,
+%%    szakját, évfolyamát, a dolgozat címét, a témavezető nevét."
+%%   "Az ábrák, táblázatok alatt fel kell tüntetni a sorszámot, a címet és a
+%%    forrást."
+%%
+%% Options:  magyar | english   (default: magyar)
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\NeedsTeXFormat{LaTeX2e}
+\ProvidesPackage{tdk}[2026/09/13 v1.0 Corvinus TDK formatting]
+
+\newif\iftdk@magyar \tdk@magyartrue
+\DeclareOption{magyar}{\tdk@magyartrue}
+\DeclareOption{english}{\tdk@magyarfalse}
+\ProcessOptions\relax
+
+% ---------------------------------------------------------------- 1. Page
+% A4, uniform 2.5 cm margins.
+\RequirePackage[a4paper,margin=2.5cm]{geometry}
+
+% ---------------------------------------------------------------- 2. Font
+% Times New Roman (newtx = TeX Gyre Termes, metrically identical to Times).
+\RequirePackage[T1]{fontenc}
+% amsmath/amssymb must load BEFORE newtxmath, otherwise newtxmath's \Bbbk clashes.
+\RequirePackage{amsmath}
+\RequirePackage{amssymb}
+\RequirePackage{amsthm}
+\RequirePackage{newtxtext}
+\RequirePackage{newtxmath}
+
+% ---------------------------------------------------------------- 3. Spacing
+% 1.5-ös sortávolság.  setspace's \onehalfspacing = 1.5 x baseline for 12pt.
+\RequirePackage{setspace}
+\onehalfspacing
+% Sorkizárt igazítás is the LaTeX default; we only guard against overfull lines.
+\emergencystretch=3em
+\tolerance=2000
+\hbadness=9999
+
+% ---------------------------------------------------------------- 4. Numbering
+% Decimal chapter numbering: I.  /  I.2.  /  I.2.3.
+\renewcommand{\thesection}{\Roman{section}}
+\renewcommand{\thesubsection}{\thesection.\arabic{subsection}}
+\renewcommand{\thesubsubsection}{\thesubsection.\arabic{subsubsection}}
+\renewcommand\@seccntformat[1]{\csname the#1\endcsname.\hspace{0.6em}}
+
+% ---------------------------------------------------------------- 5. Folios
+% Page number bottom-centre on every page.
+\RequirePackage{fancyhdr}
+\fancypagestyle{tdk}{%
+  \fancyhf{}%
+  \renewcommand{\headrulewidth}{0pt}%
+  \renewcommand{\footrulewidth}{0pt}%
+  \fancyfoot[C]{\normalfont\normalsize\thepage}}
+\pagestyle{tdk}
+\fancypagestyle{plain}{%
+  \fancyhf{}%
+  \renewcommand{\headrulewidth}{0pt}%
+  \fancyfoot[C]{\normalfont\normalsize\thepage}}
+
+% Front matter (cover, ToC, abstract) carries no folio; \tdkmaintext starts
+% arabic page 1 at the Introduction, as the call requires.
+\newcommand{\tdkfrontmatter}{\pagenumbering{gobble}}
+\newcommand{\tdkmaintext}{\cleardoublepage\pagenumbering{arabic}\setcounter{page}{1}\pagestyle{tdk}}
+
+% ---------------------------------------------------------------- 6. Captions
+% Sorszám + cím + forrás UNDER both figures and tables.
+\RequirePackage{caption}
+\captionsetup{font={small},labelfont=bf,justification=justified,
+              singlelinecheck=false,skip=6pt}
+\captionsetup[table]{position=below}
+\captionsetup[figure]{position=below}
+\iftdk@magyar
+  \captionsetup[figure]{name={\'Abra}}
+  \captionsetup[table]{name={T\'abl\'azat}}
+  \newcommand{\tdk@sourceword}{Forr\'as}
+\else
+  \newcommand{\tdk@sourceword}{Source}
+\fi
+% \forras{...} -- the mandatory source line printed under the caption.
+\newcommand{\forras}[1]{\par\vspace{-2pt}%
+  {\footnotesize\itshape\tdk@sourceword: #1\par}}
+
+% ---------------------------------------------------------------- 7. Emphasis
+% "Dőlt betű csak kiemelésre; félkövér és aláhúzás csak címekben."
+% \textbf and \underline are disabled in body text to enforce this; use \emph.
+\newcommand{\tdkstrictemphasis}{%
+  \let\tdk@oldbf\textbf
+  \renewcommand{\textbf}[1]{\emph{##1}}%
+  \renewcommand{\underline}[1]{\emph{##1}}}
+
+% ---------------------------------------------------------------- 8. Cover
+% 14pt cover page with every element the call enumerates.
+\RequirePackage{titling}
+\newcommand{\tdkszerzo}[1]{\def\tdk@szerzo{#1}}
+\newcommand{\tdkszak}[1]{\def\tdk@szak{#1}}
+\newcommand{\tdkevfolyam}[1]{\def\tdk@evfolyam{#1}}
+\newcommand{\tdkcim}[1]{\def\tdk@cim{#1}}
+\newcommand{\tdktemavezeto}[1]{\def\tdk@temavezeto{#1}}
+\newcommand{\tdkszekcio}[1]{\def\tdk@szekcio{#1}}
+\newcommand{\tdkev}[1]{\def\tdk@ev{#1}}
+\tdkszerzo{[SZERZ\H{O} NEVE]}\tdkszak{[SZAK]}\tdkevfolyam{[\'EVFOLYAM]}
+\tdkcim{[C\'IM]}\tdktemavezeto{[T\'EMAVEZET\H{O} NEVE]}\tdkszekcio{[SZEKCI\'O]}
+\tdkev{2026}
+
+\newcommand{\tdkborito}{%
+  \begin{titlepage}
+  \thispagestyle{empty}
+  \centering
+  \fontsize{14}{18}\selectfont
+  \vspace*{1.5cm}
+
+  {\scshape Budapesti Corvinus Egyetem}\\[0.3em]
+  {Tudom\'anyos Di\'akk\"ori Konferencia}\\[0.2em]
+  {\tdk@ev}
+
+  \vfill
+  {\bfseries\fontsize{16}{20}\selectfont \tdk@cim \par}
+  \vfill
+
+  \begin{minipage}{0.85\textwidth}
+  \centering
+  \fontsize{14}{18}\selectfont
+  \textbf{Szerz\H{o}:} \tdk@szerzo\\[0.35em]
+  \textbf{Szak:} \tdk@szak\\[0.35em]
+  \textbf{\'Evfolyam:} \tdk@evfolyam\\[0.35em]
+  \textbf{T\'emavezet\H{o}:} \tdk@temavezeto\\[0.35em]
+  \textbf{Szekci\'o:} \tdk@szekcio
+  \end{minipage}
+
+  \vspace{2cm}
+  \end{titlepage}}
+
+% English-language cover (same fields, 14pt), for English-language entries.
+\newcommand{\tdkcover}{%
+  \begin{titlepage}
+  \thispagestyle{empty}
+  \centering
+  \fontsize{14}{18}\selectfont
+  \vspace*{1.5cm}
+
+  {\scshape Corvinus University of Budapest}\\[0.3em]
+  {Students' Scholarly Circle Conference (TDK)}\\[0.2em]
+  {\tdk@ev}
+
+  \vfill
+  {\bfseries\fontsize{16}{20}\selectfont \tdk@cim \par}
+  \vfill
+
+  \begin{minipage}{0.85\textwidth}
+  \centering
+  \fontsize{14}{18}\selectfont
+  \textbf{Author:} \tdk@szerzo\\[0.35em]
+  \textbf{Programme:} \tdk@szak\\[0.35em]
+  \textbf{Year:} \tdk@evfolyam\\[0.35em]
+  \textbf{Supervisor:} \tdk@temavezeto\\[0.35em]
+  \textbf{Section:} \tdk@szekcio
+  \end{minipage}
+
+  \vspace{2cm}
+  \end{titlepage}}
+
+% ---------------------------------------------------------------- 9. Abstract
+% 500-2500 characters, three mandatory components.
+\newenvironment{tdkabsztrakt}%
+  {\clearpage\thispagestyle{empty}%
+   \begin{center}\bfseries\large\iftdk@magyar Absztrakt\else Abstract\fi\end{center}%
+   \par\noindent\ignorespaces}%
+  {\par\clearpage}
+
+\endinput

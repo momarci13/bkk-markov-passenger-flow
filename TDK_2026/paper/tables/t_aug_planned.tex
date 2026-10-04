@@ -1,0 +1,17 @@
+\begin{table}[htbp]
+\centering
+\footnotesize
+\begin{tabular}{l>{\raggedright\arraybackslash}p{4.6cm}rrrrrr}
+\toprule
+Layer & Project & Links & km & $\bar V$ & $V_{\max}$ & $-\Delta J$ (\%) & greedy, same $b$ (\%) \\
+\midrule
+Metro & M5 inner section (K\'alvin t\'er--Astoria--Oktogon--Lehel t\'er) & 3 & 3.2 & 0.052 & 0.320 & $27.8$ & 52.1 \\
+Tram & Pesti fon\'od\'o (De\'ak t\'er--Nyugati t\'er--Lehel t\'er) & 2 & 2.3 & 0.021 & 0.096 & $-2.7$ & 8.6 \\
+Tram & Th\"ok\"oly \'ut tram (Keleti pu.--Bosny\'ak t\'er), discussed & 1 & 3.2 & 0.023 & 0.089 & $1.1$ & 3.5 \\
+\bottomrule
+\end{tabular}
+\caption{Planned and discussed projects evaluated on the same robustness functional. The last column is the reduction achieved by the greedy plan with the same number of links.}
+\label{tab:aug-planned}
+\par\smallskip{\footnotesize Pure extensions (M3 to Rákospalota-Újpest, M2--Gödöllő HÉV, M4 to Bosnyák tér) are not listed: by Proposition~\ref{prop:pendant} they leave every $V_k$ unchanged.}
+\forras{own computation from the BKK GTFS Schedule feed (CC0-1.0), \texttt{scripts/paper\_augment.py}}
+\end{table}

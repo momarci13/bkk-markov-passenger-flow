@@ -1,0 +1,480 @@
+{
+  "metro": {
+    "n": 48,
+    "n_fail": 48,
+    "n_cand": 229,
+    "cap_m": 3000.0,
+    "c_per_m": 0.06009398516674161,
+    "alpha": 0.5,
+    "base": {
+      "J": 0.2574128434263465,
+      "Vmean": 0.0700365124930419,
+      "Vmax": 0.44478917435965115,
+      "argmax": 16,
+      "E": 0.004992582850117525
+    },
+    "base_worst": "Deák Ferenc tér",
+    "base_top_vuln": [
+      [
+        "Deák Ferenc tér",
+        0.44478917435965115
+      ],
+      [
+        "Kálvin tér",
+        0.31052788870245807
+      ],
+      [
+        "Arany János utca",
+        0.15689309429679354
+      ],
+      [
+        "Bajcsy-Zsilinszky út",
+        0.14831372586762326
+      ],
+      [
+        "Corvin-negyed",
+        0.13756538683123387
+      ],
+      [
+        "Nyugati pályaudvar",
+        0.12865146783511527
+      ],
+      [
+        "Fővám tér",
+        0.12703874457040898
+      ],
+      [
+        "Opera",
+        0.1233968330527423
+      ]
+    ],
+    "greedy": [
+      {
+        "step": 1,
+        "a": "Rákóczi tér",
+        "b": "Arany János utca",
+        "len_m": 1734.5296761622299,
+        "J": 0.19755939738416387,
+        "Vmean": 0.06666468672702135,
+        "Vmax": 0.32845410804130637,
+        "worst": "Deák Ferenc tér",
+        "E": 0.005010341910751795
+      },
+      {
+        "step": 2,
+        "a": "Fővám tér",
+        "b": "Opera",
+        "len_m": 1765.4099002139803,
+        "J": 0.13357977681191985,
+        "Vmean": 0.05952560503831374,
+        "Vmax": 0.20763394858552597,
+        "worst": "Deák Ferenc tér",
+        "E": 0.005038623191335228
+      },
+      {
+        "step": 3,
+        "a": "Fővám tér",
+        "b": "Vörösmarty tér",
+        "len_m": 1262.67973533536,
+        "J": 0.12320072058084393,
+        "Vmean": 0.05829269130518014,
+        "Vmax": 0.18810874985650772,
+        "worst": "Kálvin tér",
+        "E": 0.005058082266090557
+      },
+      {
+        "step": 4,
+        "a": "Hősök tere",
+        "b": "Dózsa György út",
+        "len_m": 1533.0756183787232,
+        "J": 0.11545706656797164,
+        "Vmean": 0.04569343560567635,
+        "Vmax": 0.18522069753026693,
+        "worst": "Kálvin tér",
+        "E": 0.0051258050253251515
+      },
+      {
+        "step": 5,
+        "a": "II. János Pál pápa tér",
+        "b": "Népliget",
+        "len_m": 2726.986608052034,
+        "J": 0.10384084421497164,
+        "Vmean": 0.03760688243785638,
+        "Vmax": 0.1700748059920869,
+        "worst": "Deák Ferenc tér",
+        "E": 0.005159177737129571
+      }
+    ],
+    "planned": {
+      "M5 inner section (Kálvin tér--Astoria--Oktogon--Lehel tér)": {
+        "links": [
+          "Kálvin tér -- Astoria",
+          "Astoria -- Oktogon",
+          "Oktogon -- Lehel tér"
+        ],
+        "len_m": 3218.478529225244,
+        "J": 0.1859407622140666,
+        "Vmean": 0.05223056527280031,
+        "Vmax": 0.3196509591553329,
+        "worst": "Kálvin tér",
+        "E": 0.005280439190351602,
+        "n_links": 3,
+        "greedy_same_B_J": 0.12320072058084393,
+        "chain": {
+          "kemeny": 237.43871020455114,
+          "gap": 0.008583233530257361,
+          "periodic": false,
+          "n_frag": 32
+        },
+        "next": [
+          {
+            "a": "Astoria",
+            "b": "Corvin-negyed",
+            "len_m": 1205.1184744310478,
+            "J": 0.11545707895704654,
+            "Vmean": 0.04950977538550472,
+            "Vmax": 0.18140438252858837,
+            "worst": "Kálvin tér"
+          },
+          {
+            "a": "Szent Gellért tér - Műegyetem",
+            "b": "Déli pályaudvar",
+            "len_m": 2919.445548915516,
+            "J": 0.09082860519344965,
+            "Vmean": 0.04297445763292463,
+            "Vmax": 0.13868275275397468,
+            "worst": "Corvin-negyed"
+          },
+          {
+            "a": "Vörösmarty utca",
+            "b": "Semmelweis Klinikák",
+            "len_m": 2877.594226856858,
+            "J": 0.07564805939958742,
+            "Vmean": 0.039474002311800115,
+            "Vmax": 0.11182211648737472,
+            "worst": "Lehel tér"
+          }
+        ],
+        "chain_next": {
+          "kemeny": 201.69986804748189,
+          "gap": 0.02038071910161232,
+          "periodic": false,
+          "n_frag": 25
+        }
+      }
+    },
+    "exhaustive_B2": {
+      "J": 0.12743864609595748,
+      "links": [
+        "Fővám tér -- Bajcsy-Zsilinszky út",
+        "Arany János utca -- Bajcsy-Zsilinszky út"
+      ],
+      "greedy_J": 0.13357977681191985,
+      "seconds": 91.30228631599994
+    },
+    "chain_base": {
+      "kemeny": 302.2119351783487,
+      "gap": -8.881784197001252e-16,
+      "periodic": true,
+      "n_frag": 36
+    },
+    "chain_greedy": [
+      {
+        "kemeny": 286.28788731424254,
+        "gap": 0.010340462899533942,
+        "periodic": false,
+        "n_frag": 36
+      },
+      {
+        "kemeny": 262.94291451426733,
+        "gap": 0.010450446839411542,
+        "periodic": false,
+        "n_frag": 35
+      },
+      {
+        "kemeny": 259.14554630905457,
+        "gap": 0.014780418067562584,
+        "periodic": false,
+        "n_frag": 35
+      },
+      {
+        "kemeny": 220.152528730119,
+        "gap": 0.015018513974142889,
+        "periodic": false,
+        "n_frag": 27
+      },
+      {
+        "kemeny": 193.24965109898037,
+        "gap": 0.015158753504640132,
+        "periodic": false,
+        "n_frag": 23
+      }
+    ],
+    "sensitivity": {
+      "alpha0": {
+        "links": [
+          "Rákóczi tér -- Arany János utca",
+          "Fővám tér -- Opera",
+          "Fővám tér -- Vörösmarty tér"
+        ],
+        "overlap": 3
+      },
+      "alpha1": {
+        "links": [
+          "Göncz Árpád városközpont -- Széchenyi fürdő",
+          "Vörösmarty utca -- Semmelweis Klinikák",
+          "Újbuda-központ -- Vörösmarty tér"
+        ],
+        "overlap": 0
+      },
+      "uniform": {
+        "links": [
+          "Kálvin tér -- Opera",
+          "Fővám tér -- Déli pályaudvar",
+          "Hősök tere -- Dózsa György út"
+        ],
+        "overlap": 0
+      }
+    },
+    "sensitivity_cap": {
+      "2000": {
+        "links": [
+          "Rákóczi tér -- Arany János utca",
+          "Fővám tér -- Opera",
+          "Fővám tér -- Vörösmarty tér"
+        ],
+        "J3": 0.12320072058084393
+      },
+      "4000": {
+        "links": [
+          "Rákóczi tér -- Arany János utca",
+          "Fővám tér -- Opera",
+          "Fővám tér -- Vörösmarty tér"
+        ],
+        "J3": 0.12320072058084393
+      }
+    }
+  },
+  "tram": {
+    "n": 309,
+    "n_fail": 100,
+    "n_cand": 579,
+    "cap_m": 1500.0,
+    "c_per_m": 0.14744230923405727,
+    "alpha": 0.5,
+    "base": {
+      "J": 0.05660502681573445,
+      "Vmean": 0.023822344361852085,
+      "Vmax": 0.08938770926961681,
+      "argmax": 223,
+      "E": 0.0013391714146363302
+    },
+    "base_worst": "Lehel utca / Róbert Károly körút",
+    "base_top_vuln": [
+      [
+        "Lehel utca / Róbert Károly körút",
+        0.08938770926961681
+      ],
+      [
+        "Széll Kálmán tér M",
+        0.08570022146483969
+      ],
+      [
+        "Nyúl utca",
+        0.06975748853268748
+      ],
+      [
+        "Etele út / Fehérvári út",
+        0.06761521945185323
+      ],
+      [
+        "Városmajor",
+        0.06138762150036958
+      ],
+      [
+        "Margit híd, budai hídfő H",
+        0.06107318920600391
+      ],
+      [
+        "Kalotaszeg utca",
+        0.05377471539520695
+      ],
+      [
+        "Szent János Kórház",
+        0.053371440832104655
+      ]
+    ],
+    "greedy": [
+      {
+        "step": 1,
+        "a": "Vágány utca / Róbert Károly körút",
+        "b": "Hun utca",
+        "len_m": 467.174416798787,
+        "J": 0.0546083672895113,
+        "Vmean": 0.02367885886082145,
+        "Vmax": 0.08553787571820115,
+        "worst": "Széll Kálmán tér M",
+        "E": 0.0013415403744476697
+      },
+      {
+        "step": 2,
+        "a": "Batthyány tér M+H",
+        "b": "Déli pályaudvar M",
+        "len_m": 1246.1303814169974,
+        "J": 0.051727230627845164,
+        "Vmean": 0.023321573957311575,
+        "Vmax": 0.08013288729837875,
+        "worst": "Széll Kálmán tér M",
+        "E": 0.0013426345540304902
+      },
+      {
+        "step": 3,
+        "a": "Oktogon M",
+        "b": "Lehel tér M",
+        "len_m": 1295.5303328767188,
+        "J": 0.05055339877906343,
+        "Vmean": 0.020862266909118146,
+        "Vmax": 0.08024453064900872,
+        "worst": "Széll Kálmán tér M",
+        "E": 0.0013771567295618361
+      },
+      {
+        "step": 4,
+        "a": "Blaha Lujza tér M",
+        "b": "Kálvin tér M",
+        "len_m": 1065.6771705641902,
+        "J": 0.04962023581656683,
+        "Vmean": 0.019698620611768188,
+        "Vmax": 0.07954185102136546,
+        "worst": "Széll Kálmán tér M",
+        "E": 0.0013872194875171199
+      },
+      {
+        "step": 5,
+        "a": "Budafoki út / Dombóvári út",
+        "b": "Budafoki út / Szerémi sor",
+        "len_m": 468.2961040927547,
+        "J": 0.04921496099148658,
+        "Vmean": 0.019259910763630525,
+        "Vmax": 0.07917001121934264,
+        "worst": "Széll Kálmán tér M",
+        "E": 0.0013977470499972463
+      }
+    ],
+    "planned": {
+      "Pesti fonódó (Deák tér--Nyugati tér--Lehel tér)": {
+        "links": [
+          "Deák Ferenc tér M -- Nyugati pályaudvar M",
+          "Nyugati pályaudvar M -- Lehel tér M"
+        ],
+        "len_m": 2283.1067181285275,
+        "J": 0.0581195632530953,
+        "Vmean": 0.020689672973698937,
+        "Vmax": 0.09554945353249167,
+        "worst": "Lehel utca / Róbert Károly körút",
+        "E": 0.001386647847625238,
+        "n_links": 2,
+        "greedy_same_B_J": 0.051727230627845164,
+        "next": [
+          {
+            "a": "Vágány utca / Róbert Károly körút",
+            "b": "Hun utca",
+            "len_m": 467.174416798787,
+            "J": 0.05363317725072905,
+            "Vmean": 0.020565800639125557,
+            "Vmax": 0.08670055386233255,
+            "worst": "Széll Kálmán tér M"
+          },
+          {
+            "a": "Blaha Lujza tér M",
+            "b": "Kálvin tér M",
+            "len_m": 1065.6771705641902,
+            "J": 0.052789340962235975,
+            "Vmean": 0.019774818223264767,
+            "Vmax": 0.08580386370120718,
+            "worst": "Széll Kálmán tér M"
+          },
+          {
+            "a": "Budafoki út / Dombóvári út",
+            "b": "Budafoki út / Szerémi sor",
+            "len_m": 468.2961040927547,
+            "J": 0.05236096082569172,
+            "Vmean": 0.01933915380385959,
+            "Vmax": 0.08538276784752385,
+            "worst": "Széll Kálmán tér M"
+          }
+        ]
+      },
+      "Thököly út tram (Keleti pu.--Bosnyák tér), discussed": {
+        "links": [
+          "Keleti pályaudvar M -- Bosnyák tér"
+        ],
+        "len_m": 3168.5745109237278,
+        "J": 0.055966966250684466,
+        "Vmean": 0.0232106949879127,
+        "Vmax": 0.08872323751345623,
+        "worst": "Lehel utca / Róbert Károly körút",
+        "E": 0.00134149574485303,
+        "n_links": 1,
+        "greedy_same_B_J": 0.0546083672895113,
+        "next": [
+          {
+            "a": "Vágány utca / Róbert Károly körút",
+            "b": "Hun utca",
+            "len_m": 467.174416798787,
+            "J": 0.0542234633367259,
+            "Vmean": 0.023060919494978127,
+            "Vmax": 0.08538600717847367,
+            "worst": "Széll Kálmán tér M"
+          },
+          {
+            "a": "Batthyány tér M+H",
+            "b": "Déli pályaudvar M",
+            "len_m": 1246.1303814169974,
+            "J": 0.051372696189232216,
+            "Vmean": 0.022708035405753235,
+            "Vmax": 0.0800373569727112,
+            "worst": "Széll Kálmán tér M"
+          },
+          {
+            "a": "Oktogon M",
+            "b": "Lehel tér M",
+            "len_m": 1295.5303328767188,
+            "J": 0.050409030100877314,
+            "Vmean": 0.02063212764282893,
+            "Vmax": 0.0801859325589257,
+            "worst": "Széll Kálmán tér M"
+          }
+        ]
+      }
+    },
+    "scc_base": 1,
+    "scc_greedy": 1,
+    "sensitivity": {
+      "alpha0": {
+        "links": [
+          "Vágány utca / Róbert Károly körút -- Hun utca",
+          "Blaha Lujza tér M -- Kálvin tér M",
+          "Rudas Gyógyfürdő -- Tas vezér utca"
+        ],
+        "overlap": 1
+      },
+      "alpha1": {
+        "links": [
+          "Jászai Mari tér -- Lehel tér M",
+          "Blaha Lujza tér M -- Kálvin tér M",
+          "Akadémia -- Esze Tamás iskola"
+        ],
+        "overlap": 0
+      },
+      "uniform": {
+        "links": [
+          "Vágány utca / Róbert Károly körút -- Hun utca",
+          "Kálvin tér M -- II. János Pál pápa tér M",
+          "Haller utca / Soroksári út -- Koppány utca"
+        ],
+        "overlap": 1
+      }
+    }
+  }
+}

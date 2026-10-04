@@ -1,0 +1,19 @@
+\begin{table}[htbp]
+\centering
+\footnotesize
+\begin{tabular}{r>{\raggedright\arraybackslash}p{5.0cm}rrr>{\raggedright\arraybackslash}p{3.0cm}rr}
+\toprule
+$b$ & Added link & km & $\bar V$ & $V_{\max}$ & Worst failure & $J$ & $-\Delta J$ (\%) \\
+\midrule
+0 & \emph{current network} & --- & 0.070 & 0.445 & De\'ak Ferenc t\'er & 0.257 & --- \\
+1 & R\'ak\'oczi t\'er -- Arany J\'anos utca & 1.73 & 0.067 & 0.328 & De\'ak Ferenc t\'er & 0.198 & 23.3 \\
+2 & F\H{o}v\'am t\'er -- Opera & 1.77 & 0.060 & 0.208 & De\'ak Ferenc t\'er & 0.134 & 48.1 \\
+3 & F\H{o}v\'am t\'er -- V\"or\"osmarty t\'er & 1.26 & 0.058 & 0.188 & K\'alvin t\'er & 0.123 & 52.1 \\
+4 & H\H{o}s\"ok tere -- D\'ozsa Gy\"orgy \'ut & 1.53 & 0.046 & 0.185 & K\'alvin t\'er & 0.115 & 55.1 \\
+5 & II. J\'anos P\'al p\'apa t\'er -- N\'epliget & 2.73 & 0.038 & 0.170 & De\'ak Ferenc t\'er & 0.104 & 59.7 \\
+\bottomrule
+\end{tabular}
+\caption{Metro: greedy robustness-driven link additions. Each row adds one bidirectional link to all previous ones. $\bar V$ and $V_{\max}$ are the mean and maximum demand-weighted vulnerability over single-station failures, $J=\tfrac12(\bar V+V_{\max})$, and the last column is the cumulative reduction of $J$.}
+\label{tab:aug-metro}
+\forras{own computation from the BKK GTFS Schedule feed (CC0-1.0), \texttt{scripts/paper\_augment.py}}
+\end{table}

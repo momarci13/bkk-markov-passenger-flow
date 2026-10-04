@@ -1,0 +1,20 @@
+\begin{table}[htbp]
+\centering
+\small
+\begin{tabular}{llrrrrrr}
+\toprule
+Mode & \texttt{rt} & $|S^v|$ & $|E^v|$ & $|E^v|/|S^v|$ & Fill (\%) & $\mathrm{med}\,1/\mu^v_i$ (s) & $\mathrm{med}\,C^v_{ij}$ (s) \\
+\midrule
+Tram & 0 & 651 & 689 & 1.06 & 0.163 & 112 & 86 \\
+Metro & 1 & 48 & 96 & 2.00 & 4.167 & 30 & 46 \\
+Bus & 3 & 4\,525 & 5\,663 & 1.25 & 0.028 & 200 & 65 \\
+Ferry & 4 & 2 & 2 & 1.00 & 50.000 & 900 & 218 \\
+\midrule
+\textbf{Total} & --- & 5\,177 & 6\,450 & --- & --- & --- & --- \\
+\bottomrule
+\end{tabular}
+\caption{Network summary by mode (weekday service, 07:00--09:00 peak window).}
+\label{tab:network}
+\par\smallskip{\footnotesize Fill $=|E^v|/|S^v|^2$. $1/\mu^v_i$ is the scheduled headway at stops with at least one peak departure. The total stop count is over distinct nodes; a node served by several modes is counted once.}
+\forras{own computation from the BKK GTFS Schedule feed (CC0-1.0)}
+\end{table}

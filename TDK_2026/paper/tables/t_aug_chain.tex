@@ -1,0 +1,21 @@
+\begin{table}[htbp]
+\centering
+\footnotesize
+\begin{tabular}{lrrcr}
+\toprule
+Metro network & $K(P)$ & $g(P)$ & periodic & fragmenting stations \\
+\midrule
+current network & 302.2 & 0.0000 & yes & 36 \\
+greedy, $b=1$ & 286.3 & 0.0103 & no & 36 \\
+greedy, $b=2$ & 262.9 & 0.0105 & no & 35 \\
+greedy, $b=3$ & 259.1 & 0.0148 & no & 35 \\
+greedy, $b=4$ & 220.2 & 0.0150 & no & 27 \\
+greedy, $b=5$ & 193.2 & 0.0152 & no & 23 \\
+M5 inner section & 237.4 & 0.0086 & no & 32 \\
+M5 inner section + 3 next links & 201.7 & 0.0204 & no & 25 \\
+\bottomrule
+\end{tabular}
+\caption{Markov-chain diagnostics of the augmented metro chain ($\lambda=1/300$\,s$^{-1}$). The last column counts the stations whose removal leaves a chain that is not irreducible.}
+\label{tab:aug-chain}
+\forras{own computation from the BKK GTFS Schedule feed (CC0-1.0), \texttt{scripts/paper\_augment.py}}
+\end{table}
