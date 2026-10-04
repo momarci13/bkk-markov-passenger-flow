@@ -12,6 +12,8 @@ KFESolver           – Kolmogorov Forward Equation (ODE / matrix-exp)
 GillespieSSA        – exact Doob-Gillespie direct method
 TauLeap             – tau-leaping approximation
 ResilienceAnalyser  – Kemeny / spectral-gap / efficiency vulnerability
+build_line_network  – hubs + line segments for one service window (model v3)
+OpenNetworkModel    – line-aware open Markov network, exact Poisson solution
 """
 
 from importlib.metadata import version, PackageNotFoundError
@@ -19,7 +21,7 @@ from importlib.metadata import version, PackageNotFoundError
 try:
     __version__ = version("bkk-markov-flow")
 except PackageNotFoundError:
-    __version__ = "2.0.0-dev"
+    __version__ = "3.0.0-dev"
 
 from .gtfs      import GTFSLoader
 from .network   import NetworkBuilder
@@ -27,6 +29,7 @@ from .generator import GeneratorBuilder
 from .demand    import DemandPrior
 from .simulate  import KFESolver, GillespieSSA, TauLeap, allocate_modal_population
 from .resilience import ResilienceAnalyser
+from .linemodel import LineNetwork, ModelParams, OpenNetworkModel, build_line_network
 
 __all__ = [
     "GTFSLoader",
@@ -38,4 +41,8 @@ __all__ = [
     "TauLeap",
     "allocate_modal_population",
     "ResilienceAnalyser",
+    "LineNetwork",
+    "ModelParams",
+    "OpenNetworkModel",
+    "build_line_network",
 ]

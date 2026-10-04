@@ -50,7 +50,7 @@ class StopMetrics:
     """Vulnerability metrics for one candidate stop."""
     stop_id:       str
     stop_local_k:  int            # index in modal stop array
-    importance:    float          # I_i = Σ_v π^v_i · μ^v_i
+    importance:    float          # stationary departure flux π^Q_i μ_i
     delta_kemeny:  float          # K(P^{-i}) - K(P)
     delta_gap:     float          # (g - g^{-i}) / g
     delta_eff:     float          # (E - E^{-i}) / E
@@ -116,9 +116,11 @@ class ResilienceAnalyser:
         self,
         top_k:        int = RESILIENCE_TOP_K,
         krylov_trunc: int = KRYLOV_TRUNC,
+        dense_max:    int = 1500,
     ) -> None:
         self.top_k        = top_k
         self.krylov_trunc = krylov_trunc
+        self.dense_max    = dense_max
 
     # ------------------------------------------------------------------ #
     def analyse(
@@ -133,7 +135,8 @@ class ResilienceAnalyser:
         ----------
         mg   : ModalGenerator
         mu_v : departure intensities μ^v_i, shape (n,).
-               Used to compute importance I_i = π^v_i · μ^v_i.
+               Used to compute the stationary departure flux
+               I_i = π^Q_i μ_i = π^P_i / Σ_k π^P_k / μ_k.
                If None, uses uniform μ = 1.
 
         Returns
@@ -161,7 +164,7 @@ class ResilienceAnalyser:
 
         # --- Importance scores ------------------------------------------
         pi    = baseline.stationary_pi
-        imp   = pi * mu            # stationary departure exposure
+        imp   = self.departure_flux(pi, mu)   # stationary departures [s^-1]
 
         # Restrict to top_k candidates
         k_candidates = min(self.top_k, n)
@@ -309,6 +312,26 @@ class ResilienceAnalyser:
     #  Utility methods                                                     #
     # ------------------------------------------------------------------ #
     @staticmethod
+    def departure_flux(pi_jump: np.ndarray, mu: np.ndarray) -> np.ndarray:
+        """
+        Stationary departure flux of the CTMC from the jump-chain distribution.
+
+        ``pi_jump`` is stationary for the embedded chain P, not for Q.  The
+        CTMC stationary law is pi^Q_i ∝ pi^P_i / mu_i, hence the departure
+        flux is pi^Q_i mu_i = pi^P_i / sum_k (pi^P_k / mu_k).  The former
+        ``pi^P_i * mu_i`` weighted stops by mu_i twice.  Stops with mu_i = 0
+        have no departures and receive zero flux.
+        """
+        pi_jump = np.asarray(pi_jump, dtype=float)
+        mu = np.asarray(mu, dtype=float)
+        active = mu > 0
+        flux = np.zeros_like(pi_jump)
+        denom = float(np.sum(pi_jump[active] / mu[active]))
+        if denom > 0:
+            flux[active] = pi_jump[active] / denom
+        return flux
+
+    @staticmethod
     def _remove_node(P: csr_matrix, k: int) -> csr_matrix:
         """Return P with row/col k deleted and rows renormalised."""
         keep = np.arange(P.shape[0]) != k
@@ -341,7 +364,9 @@ class ResilienceAnalyser:
 
         Strategy
         --------
-        - For small matrices (n ≤ 50): use dense ``numpy.linalg.eigvals``
+        - For matrices with n ≤ dense_max (default 1500): dense
+          ``numpy.linalg.eigvals`` gives the full spectrum, so Kemeny's
+          constant is exact (no tail approximation).  Formerly n ≤ 50.
           to avoid ARPACK instability.  The 18-stop tram subgraph returned
           |λ| ~ 10^{291} from ARPACK (non-convergence artefact), causing
           delta_gap overflow.
@@ -350,12 +375,13 @@ class ResilienceAnalyser:
           matrices have spectral radius ≤ 1; anything larger is numerical
           noise and must be discarded before Kemeny/gap calculations.
         """
-        k = n - 1 if n <= 50 else min(self.krylov_trunc, n - 2)
+        dense = n <= self.dense_max
+        k = n - 1 if dense else min(self.krylov_trunc, n - 2)
         if k < 1:
             return np.array([])
 
         try:
-            if n <= 50:
+            if dense:
                 # Dense path: exact and stable for small matrices
                 vals = np.linalg.eigvals(P.toarray())
             else:
@@ -420,31 +446,28 @@ class ResilienceAnalyser:
     @staticmethod
     def _network_efficiency(P: csr_matrix, pi: np.ndarray) -> float:
         """
-        Network efficiency E = (1 / n(n-1)) Σ_{i≠j} 1/d_{ij}
-        where d_{ij} is the expected cost from i to j under the chain.
-        Approximated as mean π-weighted inverse MFPT.
+        Latora–Marchiori efficiency E = (1 / n(n-1)) sum_{i != j} 1 / d_ij
+        with d_ij the directed hop distance in the support graph of P.
+
+        Exact all-sources BFS (scipy.sparse.csgraph).  The former version
+        summed over the first 200 stop indices only, i.e. a sample selected
+        by stop-id sort order rather than at random.  ``pi`` is unused and
+        kept for API compatibility.
         """
-        # Use BFS hop-distance as a proxy for d_{ij} (avoids MFPT solve)
+        from scipy.sparse.csgraph import shortest_path
+
         n = P.shape[0]
         if n <= 1:
             return 1.0
-        P_csr = P.tocsr()
+        A = P.tocsr().copy()
+        A.setdiag(0.0)
+        A.eliminate_zeros()
+        A.data[:] = 1.0
         total = 0.0
-        for i in range(min(n, 200)):   # sample for large n
-            # BFS from i using adjacency of P
-            dist    = np.full(n, np.inf)
-            dist[i] = 0.0
-            queue   = [i]
-            while queue:
-                node = queue.pop(0)
-                row  = P_csr.getrow(node)
-                for j in row.indices:
-                    if dist[j] == np.inf:
-                        dist[j] = dist[node] + 1
-                        queue.append(j)
-            reachable = dist[dist < np.inf]
-            if len(reachable) > 1:
-                total += (1.0 / reachable[reachable > 0]).sum()
-
-        pairs = min(n, 200) * (n - 1)
-        return float(total / pairs) if pairs > 0 else 0.0
+        for start in range(0, n, 512):
+            idx = np.arange(start, min(n, start + 512))
+            d = shortest_path(A, directed=True, unweighted=True, indices=idx)
+            d[np.arange(len(idx)), idx] = np.inf
+            finite = np.isfinite(d) & (d > 0)
+            total += float((1.0 / d[finite]).sum())
+        return total / (n * (n - 1))

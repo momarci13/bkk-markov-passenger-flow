@@ -481,9 +481,8 @@ class TauLeap:
     tau : float
         Fixed leap size [s].  Default: 1.0 s.
         Smaller τ → more accurate but slower.
-        Use ``epsilon_control`` to adapt τ automatically.
     epsilon : float
-        Cao–Gillespie–Petzold ε criterion for adaptive step size.
+        Cao–Gillespie–Petzold ε bound; the leap is min(tau, ε / max μ).
         Set to 0 to use fixed *tau* always.
     rng_seed : int
 
@@ -648,24 +647,21 @@ class TauLeap:
         i_arr: np.ndarray,
         q_arr: np.ndarray,
     ) -> float:
-        """Conservative propensity-ratio heuristic or fixed τ.
+        """Leap size from the Cao–Gillespie–Petzold bound for linear channels.
 
-        This is not the full Cao–Gillespie–Petzold algorithm, which requires
-        species-wise drift and variance bounds.
+        Every channel is first order (a_r = N_{v,i} q_r), so the expected
+        relative change of an occupied population in a leap is
+        tau * mu_{v,i} with mu_{v,i} = sum_{r: origin (v,i)} q_r.  Requiring
+        it to be at most epsilon gives tau = epsilon / max_{N_{v,i} > 0}
+        mu_{v,i}, capped at the user's tau.  The former rule
+        epsilon * a_0 / max_r a_r was dimensionless (not a time) and almost
+        always hit the 10*tau clip.
         """
         if self.epsilon <= 0:
             return self.tau_fixed
-
-        a     = N[v_arr, i_arr] * q_arr
-        a0    = a.sum()
-        if a0 <= 0:
+        mu = np.zeros_like(N)
+        np.add.at(mu, (v_arr, i_arr), q_arr)
+        occupied = (N > 0) & (mu > 0)
+        if not occupied.any():
             return self.tau_fixed
-
-        # Estimate |∂a_r/∂t| ≈ |q_r · (Σ_incoming - Σ_outgoing)|
-        # Simplified: use a0 / max(a) as a proxy
-        a_max = a.max()
-        if a_max <= 0:
-            return self.tau_fixed
-
-        tau_eps = self.epsilon * a0 / a_max
-        return max(min(tau_eps, self.tau_fixed * 10), self.tau_fixed * 0.1)
+        return float(min(self.tau_fixed, self.epsilon / mu[occupied].max()))

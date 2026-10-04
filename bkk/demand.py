@@ -56,7 +56,7 @@ class DemandPrior:
     n_day_total : float
         BKK published daily ridership (default 4 000 000).
     phi_peak : float
-        Fraction of daily boardings in the peak hour (default 0.11).
+        Fraction of daily boardings in the 07–09 window (default 0.20).
     beta_mean : array-like, shape (6,)
         Prior mean of log-linear coefficients.
     beta_std : array-like, shape (6,)
@@ -292,15 +292,19 @@ class DemandPrior:
         -------
         scaled : array  scaled to hourly ridership at *hour*
         """
-        # Normalised diurnal profile (sums to 24 ≈ 1 per hour on average)
-        # Based on typical Budapest weekday pattern
-        phi = {
+        # Typical Budapest weekday shape.  The raw weights sum to 1.28, so
+        # they are normalised to hourly shares phi(h) with sum_h phi(h) = 1.
+        raw = {
             0: 0.01, 1: 0.01, 2: 0.005, 3: 0.005, 4: 0.01, 5: 0.03,
             6: 0.07, 7: 0.10, 8: 0.11,  9: 0.08,  10: 0.07, 11: 0.07,
             12: 0.07, 13: 0.07, 14: 0.07, 15: 0.07, 16: 0.09, 17: 0.10,
             18: 0.08, 19: 0.06, 20: 0.04, 21: 0.03, 22: 0.02, 23: 0.01,
         }
-        return N_hat * (phi.get(hour, 0.01) / PHI_PEAK_07_09)
+        total = sum(raw.values())
+        phi_h = raw.get(int(hour) % 24, 0.01) / total
+        phi_window = (raw[7] + raw[8]) / total      # share of the 07–09 window
+        # N_hat refers to the 07–09 window; return the one-hour equivalent at *hour*
+        return N_hat * (phi_h / phi_window)
 
     # ------------------------------------------------------------------ #
     #  Internal helpers                                                   #
@@ -332,7 +336,7 @@ class DemandPrior:
                     G.number_of_nodes(),
                 )
                 bc = nx.betweenness_centrality(
-                    G, k=min(500, G.number_of_nodes()), normalized=True
+                    G, k=min(500, G.number_of_nodes()), normalized=True, seed=0
                 )
             else:
                 bc = nx.betweenness_centrality(G, normalized=True)

@@ -56,7 +56,11 @@ GTFS_REQUIRED: tuple[str, ...] = (
 #   2   Suburban railway / HÉV
 #   3   Bus (busz)
 #   4   Ferry / boat (hajó)
-#   800 Trolleybus (trolibusz)   ← extended GTFS type
+#   800 Trolleybus (trolibusz)   ← extended GTFS type (older feeds)
+#   11  Trolleybus               ← standard code used by feeds since 2024
+#   109 Suburban railway / HÉV   ← extended code used by feeds since 2024
+# The 2026 feed uses 11 and 109; without them both modes were silently
+# dropped by the route-type filter.
 # ---------------------------------------------------------------------------
 ROUTE_TYPES: dict[int, dict] = {
     0: {
@@ -104,6 +108,24 @@ ROUTE_TYPES: dict[int, dict] = {
         "walk_radius_m": 400,
         "load_factor":   0.40,
     },
+    11: {
+        "name":          "trolleybus",
+        "hu":            "trolibusz",
+        "kappa":         0.85,
+        "capacity":      135,
+        "speed_kmh":     17.0,
+        "walk_radius_m": 400,
+        "load_factor":   0.50,
+    },
+    109: {
+        "name":          "hev",
+        "hu":            "HÉV",
+        "kappa":         0.55,
+        "capacity":      500,
+        "speed_kmh":     32.0,
+        "walk_radius_m": 800,
+        "load_factor":   0.45,
+    },
     800: {
         "name":          "trolleybus",
         "hu":            "trolibusz",
@@ -143,8 +165,10 @@ SSA_MAX_EVENTS: int         = 500_000   # safety cap for exact SSA
 # ---------------------------------------------------------------------------
 # Demand prior defaults
 # ---------------------------------------------------------------------------
-N_DAY_TOTAL: float    = 4_000_000.0    # BKK published weekday boardings
-PHI_PEAK_07_09: float = 0.11           # fraction of daily boardings in 07–09h
+N_DAY_TOTAL: float    = 4_000_000.0    # assumed weekday boardings (order of magnitude)
+PHI_PEAK_07_09: float = 0.20           # fraction of daily boardings in the 07–09 window
+# (the former 0.11 was a one-hour share applied to a two-hour window; the
+# diurnal profile in bkk.demand gives 0.21 for 07–09 after normalisation)
 
 # Literature-informed prior coefficients β  (Table 3 in the paper)
 # Order: [log(1+f_i), log(1+Pop_i), log(1+POI_i), B_i, I_i, log(1+D_i)]
