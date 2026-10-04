@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "bkk-markov-flow"
-version = "2.0.0"
+version = "3.0.0"
 description = "Multi-modal Markov-chain passenger-flow model for the BKK Budapest GTFS network"
 readme = "README.md"
 requires-python = ">=3.10"

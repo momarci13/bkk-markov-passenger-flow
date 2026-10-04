@@ -14,6 +14,38 @@ passenger-count forecasting product.
 
 ---
 
+## Version 3 — line-aware open Markov model and TDK paper
+
+A mathematical audit (`AUDIT.md`) found structural errors in the v2 stop-hop chain
+(passengers alighting at every stop, no in-vehicle time, a 2× waiting hazard,
+stock/flow confusion, mixed stationary laws) and two data defects (route types 11/109
+dropped, weekday-union calendar inflating frequencies 2.4×). Version 3 adds
+`bkk/linemodel.py`:
+
+* states = hub waiting ∪ line-segment riding; continuation shares from GTFS trips
+* boarding hazard θ = 2f/(1+CV²) (renewal mean wait), boarding choice by minimum relative
+  entropy realised exactly by Poisson thinning
+* open network with Poisson inflow → occupancies are **independent Poisson**, journey time is
+  phase-type; solved exactly with one sparse linear solve (simulation only for verification)
+* demand-weighted efficiency with exact Dijkstra for station-closure / node-failure analysis
+
+The Hungarian TDK paper is `tdk/tdk_dolgozat.pdf`. Every number in it is reproduced by:
+
+```bash
+# official BKK feed via the MobilityData mirror (version 2572.20260604 was used)
+curl -L -o data/budapest_gtfs.zip \
+  "https://storage.googleapis.com/storage/v1/b/mdb-latest/o/hu-budapest-budapesti-kozlekedesi-kozpont-bkk-gtfs-990.zip?alt=media"
+python scripts/tdk_analysis.py --date 20260609   # ~15 min, writes data/results/
+python scripts/tdk_figures.py                    # Budapest maps (EOV), downloads geoBoundaries
+python scripts/tdk_tex_numbers.py                # LaTeX macros + table
+cd tdk && pdflatex tdk_dolgozat.tex && pdflatex tdk_dolgozat.tex
+```
+
+`bp_markov_revised.*` and `prezi_revised.*` describe the superseded v2 model and are kept
+for provenance only; see `AUDIT.md` for what is wrong in them.
+
+---
+
 ## GTFS File Inventory
 
 The BKK ZIP contains these standard GTFS Schedule files:
@@ -40,7 +72,8 @@ The BKK ZIP contains these standard GTFS Schedule files:
 | 2 | Suburban railway | HÉV |
 | 3 | Bus | busz |
 | 4 | Ferry | hajó |
-| 800 | Trolleybus | trolibusz |
+| 800 / 11 | Trolleybus | trolibusz |
+| 109 | Suburban railway (current feeds) | HÉV |
 
 ---
 
@@ -266,12 +299,20 @@ bkk_framework/
 │   ├── demand.py        DemandPrior: E1/E2/E3 estimators for N_i(0)
 │   ├── simulate.py      KFESolver, GillespieSSA, TauLeap
 │   ├── resilience.py    ResilienceAnalyser: Kemeny/gap/efficiency
+│   ├── linemodel.py     v3 line-aware open Markov network (exact solution)
 │   └── cli.py           CLI entry points
 ├── tests/
 │   ├── test_core.py         Core mathematical and interface tests
-│   └── test_regressions.py  Regression tests for previously identified edge cases
+│   ├── test_regressions.py  Regression tests for previously identified edge cases
+│   └── test_linemodel.py    v3 model + audit-fix regression tests
 ├── scripts/
-│   └── run_pipeline.py  End-to-end pipeline script
+│   ├── run_pipeline.py  End-to-end pipeline script (legacy v2)
+│   ├── tdk_analysis.py  v3 analysis behind the TDK paper
+│   ├── tdk_figures.py   maps and figures
+│   ├── budapest_basemap.py  vector basemap (districts, Danube, GTFS shapes)
+│   └── tdk_tex_numbers.py   results → LaTeX macros
+├── tdk/                 Hungarian TDK paper (tex, pdf, figures, generated numbers)
+├── AUDIT.md             mathematical audit of v2
 ├── bp_markov_revised.tex / .pdf  Research paper
 ├── prezi_revised.tex / .pdf      Technical presentation
 ├── pyproject.toml

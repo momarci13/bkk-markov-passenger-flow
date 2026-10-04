@@ -384,6 +384,11 @@ class GTFSLoader:
                 log.info("Filtering by weekday='%s' via calendar.txt", weekday)
                 feed = self._filter_by_calendar(feed, weekday)
             elif feed.has_calendar_dates():
+                log.warning(
+                    "weekday-only filter takes the union of services over all "
+                    "matching dates and can inflate frequencies (2.4x on the "
+                    "2026 BKK feed); pass date_filter='YYYYMMDD' for one service day."
+                )
                 log.info(
                     "calendar.txt absent – filtering by weekday='%s' "
                     "via calendar_dates.txt (BKK mode)", weekday
