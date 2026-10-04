@@ -105,6 +105,17 @@ def main() -> None:
     for k, rec in enumerate(tf[:3]):
         m[f"FAILNAME{'ABC'[k]}"] = rec["name"]
         m[f"FAILNET{'ABC'[k]}"] = hu(100 * rec["dE_net_failure"], 1)
+    ch = R["choice"]
+    m["CHACTIVE"] = hui(ch["active_hubs"])
+    m["CHMULTI"] = hui(ch["hubs_multi_segment"])
+    m["CHMULTIB"] = hu(100 * ch["boarding_share_multi_segment"], 1)
+    m["CHLINEB"] = hu(100 * ch["boarding_share_multi_line"], 1)
+    m["CHMODE"] = hui(ch["hubs_multi_mode"])
+    m["CHMODEB"] = hu(100 * ch["boarding_share_multi_mode"], 1)
+    m["DEAKZERO"] = hu(100 * ch["deak_metro_share_lambda0"], 0)
+    m["DEAKBASE"] = hu(100 * ch["deak_metro_share_base"], 0)
+    m["SUPPLYSHARE"] = hu(100 * R["supply_share_window"], 1)
+    m["NDAY"] = hu(R["base"]["params"]["n_day"] / 1e6, 1)
     if "modal_split" in R:
         ms = R["modal_split"]
         for mode, key in (("metró", "METRO"), ("busz", "BUS"), ("villamos", "TRAM"),

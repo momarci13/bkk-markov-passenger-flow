@@ -48,7 +48,8 @@ def main() -> None:
     ap.add_argument("--zip", default="data/budapest_gtfs.zip")
     ap.add_argument("--date", default="20260609")
     ap.add_argument("--out", default="data/results")
-    ap.add_argument("--n-day", type=float, default=4.0e6, help="weekday boardings")
+    ap.add_argument("--n-day", type=float, default=3.4e6,
+                    help="workday boardings (BKK BUDAPESTREND Mobility Report 2024: 3.4 million)")
     ap.add_argument("--phi", type=float, default=0.20, help="share of boardings in 07-09")
     ap.add_argument("--candidates", type=int, default=60)
     ap.add_argument("--mc", type=int, default=200_000)
@@ -64,6 +65,11 @@ def main() -> None:
     cache = Path("data/cache") / f"net_{args.date}.pkl"
     loader = GTFSLoader().load(args.zip)
     R["calendar"] = legacy_trip_counts(loader, args.date, "tuesday")
+    day = loader.parse(date_filter=args.date)
+    dep = (pd.to_numeric(day.stop_times["departure_time"].astype(str).str.split(":").str[0])
+           * 3600 + pd.to_numeric(day.stop_times["departure_time"].astype(str).str.split(":").str[1])
+           * 60).dropna().to_numpy() % 86400
+    supply_share = float(np.mean((dep >= 7 * 3600) & (dep < 9 * 3600)))
     if cache.exists():
         net = pickle.load(open(cache, "rb"))
     else:
@@ -125,7 +131,34 @@ def main() -> None:
                                       "pkm_share": float(by_mode_km[m] / by_mode_km.sum())}
         for m in by_mode_b.index
     }
-    # waiting-time consequence of the hazard correction and the calendar bug
+    # where does the boarding choice act?  hubs with >= 2 departing segments
+    nseg = np.bincount(net.seg_from, minlength=H)
+    nroute = pd.Series(net.seg_route).groupby(net.seg_from).nunique().reindex(range(H), fill_value=0).to_numpy()
+    nmode = pd.Series(net.seg_mode).groupby(net.seg_from).nunique().reindex(range(H), fill_value=0).to_numpy()
+    b = F["boarding"]
+    m0 = OpenNetworkModel(net, ModelParams(lam=0.0, mean_leg_m=base.mean_leg_m,
+                                           p_transfer=base.p_transfer))
+    def choice(mm):
+        tot = np.bincount(net.seg_from, weights=mm.q_board, minlength=H)
+        return mm.q_board / tot[net.seg_from]
+    p1, p0 = choice(model), choice(m0)
+    tv = 0.5 * np.bincount(net.seg_from, weights=np.abs(p1 - p0), minlength=H)
+    deak = int(np.flatnonzero(net.hub_name == "Deák Ferenc tér")[0])
+    kd = net.seg_from == deak
+    R["choice"] = {
+        "active_hubs": int((nseg > 0).sum()),
+        "hubs_multi_segment": int((nseg >= 2).sum()),
+        "boarding_share_multi_segment": float(b[nseg >= 2].sum() / b.sum()),
+        "boarding_share_multi_line": float(b[nroute >= 2].sum() / b.sum()),
+        "hubs_multi_mode": int((nmode >= 2).sum()),
+        "boarding_share_multi_mode": float(b[nmode >= 2].sum() / b.sum()),
+        "tv_lambda_vs_zero_weighted": float(np.average(tv, weights=b)),
+        "deak_metro_share_lambda0": float(p0[kd & (net.seg_mode == 1)].sum()),
+        "deak_metro_share_base": float(p1[kd & (net.seg_mode == 1)].sum()),
+    }
+    # share of the day's scheduled stop departures inside the window (supply proxy)
+    R["supply_share_window"] = supply_share
+    # waiting-time consequence of the hazard correction
     th = model.theta
     R["hazard"] = {
         "mean_theta_over_f": float(np.average(th / net.seg_freq, weights=net.seg_n)),
