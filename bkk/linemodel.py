@@ -481,21 +481,21 @@ class OpenNetworkModel:
                    scenario: str = "closure", origins: np.ndarray | None = None) -> float:
         """
         Demand-weighted Latora–Marchiori efficiency
-            E = sum_{o != d} w_o w_d / t_od  /  sum_{o != d} w_o w_d   [s^-1].
+            E = sum_{o != d} W_od / t_od  /  sum_{o != d} W_od   [s^-1],
+        with W_od = w_o w_d for a weight vector or W given as an (H, H) matrix.
         OD pairs touching a closed hub count as unreachable (1/t = 0).
         """
-        H = self.net.n_hubs
-        origins = np.flatnonzero(weights > 0) if origins is None else origins
+        w = np.asarray(weights, dtype=float)
+        mass = w if w.ndim == 1 else w.sum(axis=1)
+        origins = np.flatnonzero(mass > 0) if origins is None else origins
         G = self.travel_graph(closed_hub, scenario)
         Tm = self.hub_travel_times(G, origins)
         inv = np.zeros_like(Tm)
         finite = np.isfinite(Tm) & (Tm > 0)
         inv[finite] = 1.0 / Tm[finite]
-        inv[np.arange(len(origins)), origins] = 0.0
         if closed_hub is not None:
             inv[:, closed_hub] = 0.0
             inv[origins == closed_hub, :] = 0.0
-        wo = weights[origins]
-        num = float(wo @ inv @ weights)
-        den = float(wo.sum() * weights.sum() - (wo * weights[origins]).sum())
-        return num / den
+        Wo = w[origins].copy() if w.ndim == 2 else np.outer(w[origins], w)
+        Wo[np.arange(len(origins)), origins] = 0.0
+        return float((Wo * inv).sum() / Wo.sum())

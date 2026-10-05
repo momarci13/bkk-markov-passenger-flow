@@ -30,11 +30,11 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-from tdk_common import (BASE_PARAMS, accessibility, district_change, es_travel_time,
+from tdk_common import (BASE_PARAMS, DEMAND, RES as C_RES, demand, accessibility, district_change, es_travel_time,
                         geography, hub, load_base, street_router)
 
 from bkk.linemodel import OpenNetworkModel
-from bkk.scenario import (METRO, TRAM, MinPlusEvaluator, NewLine, add_lines,
+from bkk.scenario import (METRO, TRAM, MinPlusEvaluator, NewLine, add_lines, node_mass,
                           first_round_gains, generate_candidates,
                           generate_street_candidates, greedy_select, line_cost,
                           line_length_m)
@@ -42,7 +42,7 @@ from bkk.streets import unproject
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(message)s", datefmt="%H:%M:%S")
 log = logging.getLogger("plans")
-RES = Path(__import__("os").environ.get("PLANS_OUT", "data/results"))
+RES = Path(__import__("os").environ.get("PLANS_OUT", str(C_RES)))
 DISTRICTS = ["IV. kerület", "XIII. kerület", "V. kerület", "XI. kerület", "XXII. kerület",
              "XXI. kerület", "IX. kerület", "III. kerület"]
 
@@ -155,10 +155,25 @@ def main() -> None:
         ev = MinPlusEvaluator(T, origins, w)
         return aug, T, ev.efficiency()
 
-    R = {"baseline": {"E": E0, "ES90_min": ES0}, "bridge_edges_removed": n_bridge}
+    R = {"baseline": {"E": E0, "ES90_min": ES0}, "bridge_edges_removed": n_bridge,
+         "demand": DEMAND}
+    # the same travel-time matrices under the other demand weights (robustness)
+    alt = {v: demand(model, T0, v)[1] for v in ("departures", "population", "population_gravity")
+           if v != DEMAND}
+    alt_base = {v: (MinPlusEvaluator(T0, origins, ww).efficiency(), es_travel_time(T0, origins, ww))
+                for v, ww in alt.items()}
+    robust = {v: {"baseline_ES90_min": b[1]} for v, b in alt_base.items()}
+
+    def robustness(key, T):
+        for v, ww in alt.items():
+            E_v = MinPlusEvaluator(T, origins, ww).efficiency()
+            robust[v][key] = {"gain": (E_v - alt_base[v][0]) / alt_base[v][0],
+                              "ES90_min": es_travel_time(T, origins, ww)}
+
     out = {}
     for key, lines in plans.items():
         aug, T, E = evaluate(lines)
+        robustness(key, T)
         A1 = accessibility(T, origins, w)
         rec = {"label": labels[key], "mode": "metró" if lines[0].spec.mode == 1 else "villamos",
                "stations": [str(net.hub_name[h]) for h in lines[0].hubs],
@@ -176,6 +191,8 @@ def main() -> None:
     # all four together
     pkg_lines = [l for ls in plans.values() for l in ls]
     aug_p, T_p, E_p = evaluate(pkg_lines)
+    robustness("package", T_p)
+    R["robustness"] = robust
     A_p = accessibility(T_p, origins, w)
     R["package"] = {"gain": (E_p - E0) / E0, "ES90_min": es_travel_time(T_p, origins, w),
                     "sum_of_parts": sum(v["gain"] for v in out.values()),
@@ -194,7 +211,7 @@ def main() -> None:
     in_city = np.array([city.contains(Point(x, y)) for x, y in zip(hx, hy)])
     pool = np.flatnonzero(model.hub_active & in_city)
     n_end = int(__import__("os").environ.get("PLANS_NEND", 60))   # override for smoke tests
-    ends = pool[np.argsort(-w[pool])][:n_end]
+    ends = pool[np.argsort(-node_mass(w)[pool])][:n_end]
 
     def crosses(lon1, lat1, lon2, lat2):
         x, y = eov([lon1, lon2], [lat1, lat2])
@@ -206,7 +223,7 @@ def main() -> None:
                                                     pool[router.hub_node[pool] >= 0], router)
               if len(c.hubs) >= 3]
     ev_p = MinPlusEvaluator(T_p, origins, w)
-    cache = Path(f"data/cache/plans_gains_{n_end}.pkl")
+    cache = Path(f"data/cache/plans_gains_{n_end}_{DEMAND}.pkl")
     if cache.exists():
         g1 = pickle.load(open(cache, "rb"))
     else:
@@ -236,7 +253,7 @@ def main() -> None:
                                                     label, DISTRICTS)}
 
     # how the earlier (plan-free) proposals U1..U5 interact with the plans
-    sc = json.load(open(Path("data/results") / "scenarios.json"))
+    sc = json.load(open(RES / "scenarios.json"))
     inter = []
     ev0 = MinPlusEvaluator(T0, origins, w)
     ev_p = MinPlusEvaluator(T_p, origins, w)            # fresh: plans only, no J-lines

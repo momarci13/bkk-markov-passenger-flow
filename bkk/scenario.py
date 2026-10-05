@@ -32,6 +32,24 @@ from .network import _haversine_m
 
 
 # ---------------------------------------------------------------------------
+# Demand weights: a vector w (OD weight w_o w_d) or a full OD matrix W
+# ---------------------------------------------------------------------------
+def od_rows(weights: np.ndarray, origins: np.ndarray) -> np.ndarray:
+    """OD weights of the origin rows, diagonal o = d removed."""
+    w = np.asarray(weights, dtype=float)
+    origins = np.asarray(origins)
+    Wo = w[origins].copy() if w.ndim == 2 else np.outer(w[origins], w)
+    Wo[np.arange(len(origins)), origins] = 0.0
+    return Wo
+
+
+def node_mass(weights: np.ndarray) -> np.ndarray:
+    """Per-hub demand mass: w itself, or (row sums + column sums) / 2 of W."""
+    w = np.asarray(weights, dtype=float)
+    return w if w.ndim == 1 else 0.5 * (w.sum(axis=0) + w.sum(axis=1))
+
+
+# ---------------------------------------------------------------------------
 # Line definitions
 # ---------------------------------------------------------------------------
 @dataclass(frozen=True)
@@ -182,7 +200,7 @@ class MinPlusEvaluator:
     T  : (len(origins), H) shortest expected times from origin hubs; every
          hub that may become a station needs a row (pass all hubs as
          origins -- zero-weight hubs do not affect the efficiency)
-    w  : (H,) demand weights; OD weight w_o w_d
+    w  : (H,) demand weights with OD weight w_o w_d, or an (H, H) OD matrix
     """
 
     def __init__(self, T: np.ndarray, origins: np.ndarray, weights: np.ndarray) -> None:
@@ -190,16 +208,14 @@ class MinPlusEvaluator:
         self.origins = np.asarray(origins)
         self.w = np.asarray(weights, dtype=float)
         self.row = {int(h): k for k, h in enumerate(self.origins)}
-        wo = self.w[self.origins]
-        self.den = float(wo.sum() * self.w.sum() - (wo * self.w[self.origins]).sum())
-        self._diag = (np.arange(len(self.origins)), self.origins)
+        self.Wo = od_rows(self.w, self.origins)
+        self.den = float(self.Wo.sum())
 
     def efficiency(self, T: np.ndarray | None = None) -> float:
         T = self.T if T is None else T
         with np.errstate(divide="ignore"):
             inv = np.where(np.isfinite(T) & (T > 0), 1.0 / T, 0.0)
-        inv[self._diag] = 0.0
-        return float(self.w[self.origins] @ inv @ self.w) / self.den
+        return float((self.Wo * inv).sum()) / self.den
 
     def in_line_costs(self, net: LineNetwork, line: NewLine) -> np.ndarray:
         """c_ab = mean wait at a (1/theta, theta = 2/headway) + riding time a -> b."""
@@ -260,6 +276,7 @@ def generate_candidates(
     order of demand weight subject to ``spacing_m``, then ordered along the axis.
     """
     x, y = _local_xy(net)
+    weights = node_mass(weights)
     pool = np.asarray(station_pool)
     out = []
     ends = list(endpoints)
@@ -320,6 +337,7 @@ def generate_street_candidates(
     from .streets import project, unproject
 
     G = router.graph
+    weights = node_mass(weights)
     pool = np.asarray(station_pool)
     px_h, py_h = project(net.hub_lat, net.hub_lon)
     tree_pool = cKDTree(np.column_stack([px_h[pool], py_h[pool]]))

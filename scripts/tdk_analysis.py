@@ -27,8 +27,14 @@ import numpy as np
 import pandas as pd
 from scipy.stats import spearmanr
 
+import sys
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from tdk_common import DEMAND, RES as C_RES, demand  # noqa: E402
+
 from bkk import GTFSLoader
 from bkk.linemodel import ModelParams, OpenNetworkModel, build_line_network
+from bkk.scenario import od_rows
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(message)s", datefmt="%H:%M:%S")
 log = logging.getLogger("tdk")
@@ -47,7 +53,7 @@ def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--zip", default="data/budapest_gtfs.zip")
     ap.add_argument("--date", default="20260609")
-    ap.add_argument("--out", default="data/results")
+    ap.add_argument("--out", default=str(C_RES))
     ap.add_argument("--n-day", type=float, default=3.4e6,
                     help="workday boardings (BKK BUDAPESTREND Mobility Report 2024: 3.4 million)")
     ap.add_argument("--phi", type=float, default=0.20, help="share of boardings in 07-09")
@@ -56,7 +62,7 @@ def main() -> None:
     args = ap.parse_args()
     out = Path(args.out)
     out.mkdir(parents=True, exist_ok=True)
-    R: dict = {"date": args.date}
+    R: dict = {"date": args.date, "demand": DEMAND}
 
     with zipfile.ZipFile(args.zip) as z:
         info = pd.read_csv(z.open("feed_info.txt"), dtype=str).iloc[0].to_dict()
@@ -104,8 +110,10 @@ def main() -> None:
     base = ModelParams(lam=1 / 300, mean_leg_m=3500.0, p_transfer=0.30)
     model = OpenNetworkModel(net, base)
     B_rate = args.n_day * args.phi / 7200.0                      # boardings / s
-    shape = model.demand_prior(beta=1.0)
-    lam = model.scale_to_boardings(shape, B_rate)
+    T_all = model.hub_travel_times(model.travel_graph(), np.arange(H))
+    lam, w = demand(model, T_all)                    # source rates and OD weights
+    lam = model.scale_to_boardings(lam, B_rate)
+    shape = lam / lam.sum()
     L = model.steady_state(lam)
     F = model.flows(L)
     waiting, riding = L[:H].sum(), L[H:].sum()
@@ -209,7 +217,8 @@ def main() -> None:
         p = ModelParams(lam=base.lam, mean_leg_m=base.mean_leg_m, p_transfer=base.p_transfer)
         setattr(p, key, val)
         mm = OpenNetworkModel(net, p)
-        ll = mm.scale_to_boardings(mm.demand_prior(), B_rate)
+        ll = mm.scale_to_boardings(mm.demand_prior() if DEMAND == "departures" else shape,
+                                   B_rate)
         LL = mm.steady_state(ll)
         FF = mm.flows(LL)
         rho = spearmanr(base_board, FF["boarding"]).statistic
@@ -222,8 +231,9 @@ def main() -> None:
     R["sensitivity"] = sens
 
     # ----------------------------------------------------------- resilience
-    w = shape                                         # OD weights w_o w_d
-    origins = np.flatnonzero(w > 0)
+    mass = w if np.ndim(w) == 1 else w.sum(axis=1)  # OD weights w_o w_d or W_od
+    origins = np.flatnonzero(mass > 0)
+    Wo = od_rows(w, origins)
     throughput = F["boarding"] + F["alighting"]
     cand = np.argsort(throughput)[::-1][: args.candidates]
 
@@ -231,15 +241,12 @@ def main() -> None:
         inv = np.zeros_like(Tm)
         ok = np.isfinite(Tm) & (Tm > 0)
         inv[ok] = 1.0 / Tm[ok]
-        inv[np.arange(len(origins)), origins] = 0.0
-        wo = w[origins].copy()
-        wd = w.copy()
+        Wd = Wo
         if drop is not None:            # restrict to OD pairs not touching drop
-            wo[origins == drop] = 0.0
-            wd[drop] = 0.0
-        num = float(wo @ inv @ wd)
-        den = float(wo.sum() * wd.sum() - (wo * wd[origins]).sum())
-        return num / den
+            Wd = Wo.copy()
+            Wd[origins == drop, :] = 0.0
+            Wd[:, drop] = 0.0
+        return float((Wd * inv).sum() / Wd.sum())
 
     t0 = time.perf_counter()
     T0 = model.hub_travel_times(model.travel_graph(), origins)

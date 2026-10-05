@@ -19,13 +19,12 @@ import json
 from pathlib import Path
 
 import numpy as np
-from tdk_common import BASE_PARAMS, hub, load_base
+from tdk_common import BASE_PARAMS, RES, hub, load_base, od_matrix
 
 from bkk.linemodel import OpenNetworkModel
 from bkk.network import _haversine_m
 from bkk.scenario import MinPlusEvaluator, NewLine, TRAM, add_lines
 
-RES = Path("data/results")
 NEW_RESIDENTS = 40_000
 BOARD_PER_RES = 2.0
 PHI = 0.20
@@ -52,7 +51,7 @@ def main() -> None:
     extra_board = NEW_RESIDENTS * BOARD_PER_RES * PHI / 7200.0
     lam_new = lam.copy()
     lam_new[catch] += extra_board / legs / len(catch)
-    w_new = lam_new / lam_new.sum()
+    w_new = od_matrix(lam_new, model, T0)
 
     # rebuild the two South-Buda lines exactly as in tdk_plans.py
     def line(rec, name):

@@ -34,6 +34,15 @@ dropped, weekday-union calendar inflating frequencies 2.4×). Version 3 adds
 * `bkk/streets.py`: street graph from GTFS `shapes.txt` (40 m grid); new trams are routed by
   shortest path on main roads only (tram track, trolleybus, or ≥ 3 bus routes) and cross the
   Danube only on today's tram bridges; metro stays a straight tunnel
+* `bkk/demand_data.py`: population-based demand. Meta HRSL 30 m residents are assigned to
+  hubs by a logit access-hub choice, `ω_ch ∝ exp(−d_ch/ℓ + δ_k(h))`, with class radii
+  (metro/HÉV 1000 m, tram 600 m, bus 500 m). The access constants δ are calibrated to BKK
+  trips by mode through the linear mode response `M = (−T)⁻¹B`, i.e. `b_m(λ) = λᵀ M e_m`.
+  The script also runs a district NNLS/BVLS identifiability check. OD weights come from a
+  production-constrained gravity model, `W_od = λ_o a_d e^{−βt_od} / Σ_d' …`; the main
+  case uses β = 0 and the calibrated β is a robustness check. Census district OD and
+  car-ownership tables are supported as manual CSV exports (`data/external/manual/`).
+  Select the demand variant with `TDK_DEMAND=population|population_gravity|departures`.
 
 The Hungarian TDK paper is `tdk/tdk_dolgozat.pdf`. Every number in it is reproduced by:
 
@@ -41,6 +50,7 @@ The Hungarian TDK paper is `tdk/tdk_dolgozat.pdf`. Every number in it is reprodu
 # official BKK feed via the MobilityData mirror (version 2572.20260604 was used)
 curl -L -o data/budapest_gtfs.zip \
   "https://storage.googleapis.com/storage/v1/b/mdb-latest/o/hu-budapest-budapesti-kozlekedesi-kozpont-bkk-gtfs-990.zip?alt=media"
+python scripts/tdk_demand_data.py                # HRSL window (S3), access-choice calibration
 python scripts/tdk_analysis.py --date 20260609   # ~15 min, writes data/results/
 python scripts/tdk_scenarios.py                  # new metro/tram lines + planned M5 benchmark
 python scripts/tdk_plans.py                      # current Budapest plans (Bajcsy tram, Budai fonódó II,
@@ -312,6 +322,7 @@ bkk_framework/
 │   ├── linemodel.py     v3 line-aware open Markov network (exact solution)
 │   ├── scenario.py      new-line scenarios (min-plus screening, greedy selection)
 │   ├── streets.py       GTFS-shape street graph and main-road router
+│   ├── demand_data.py   population catchments, access choice, gravity OD, NNLS/BVLS
 │   └── cli.py           CLI entry points
 ├── tests/
 │   ├── test_core.py         Core mathematical and interface tests
@@ -323,6 +334,7 @@ bkk_framework/
 │   ├── tdk_scenarios.py new metro/tram lines and the M5 benchmark
 │   ├── tdk_figures.py   maps and figures
 │   ├── budapest_basemap.py  vector basemap (districts, Danube, GTFS shapes)
+│   ├── tdk_demand_data.py   population grid, access-choice calibration, OD weights
 │   └── tdk_tex_numbers.py   results → LaTeX macros
 ├── tdk/                 Hungarian TDK paper (tex, pdf, figures, generated numbers)
 ├── AUDIT.md             mathematical audit of v2

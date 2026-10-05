@@ -29,9 +29,11 @@ from shapely.ops import unary_union
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from budapest_basemap import BUDA, CSEPEL, eov, load_districts  # noqa: E402
 
+from tdk_common import DEMAND, RES as C_RES, load_base  # noqa: E402
+
 from bkk.linemodel import ModelParams, OpenNetworkModel  # noqa: E402
 from bkk.scenario import (  # noqa: E402
-    METRO, TRAM, MinPlusEvaluator, NewLine, add_lines, find_segment,
+    METRO, TRAM, MinPlusEvaluator, NewLine, add_lines, find_segment, node_mass,
     first_round_gains, generate_candidates, generate_street_candidates, greedy_select,
     line_cost, line_length_m,
 )
@@ -42,7 +44,7 @@ log = logging.getLogger("scen")
 N_DAY, PHI = 3.4e6, 0.20
 K_LINES = 5
 N_END = int(__import__("os").environ.get("SCEN_NEND", 60))   # override for smoke tests
-RES = Path(__import__("os").environ.get("SCEN_OUT", "data/results"))
+RES = Path(__import__("os").environ.get("SCEN_OUT", str(C_RES)))
 
 
 def hub(net, name: str) -> int:
@@ -65,14 +67,9 @@ def line_predictions(model: OpenNetworkModel, lam: np.ndarray, name: str) -> dic
 
 def main() -> None:
     t0 = time.perf_counter()
-    net = pickle.load(open("data/cache/net_20260609.pkl", "rb"))
-    base_params = ModelParams(lam=1 / 300, mean_leg_m=3500.0, p_transfer=0.30)
-    model = OpenNetworkModel(net, base_params)
-    w = model.demand_prior()
-    lam = model.scale_to_boardings(w, N_DAY * PHI / 7200.0)     # fixed demand
+    net, model, w, lam, origins, T0 = load_base()                # fixed demand
+    base_params = model.p
     H = net.n_hubs
-    origins = np.arange(H)
-    T0 = model.hub_travel_times(model.travel_graph(), origins)
     ev0 = MinPlusEvaluator(T0, origins, w)
     E0 = ev0.efficiency()
     log.info("baseline efficiency %.4e  (%.1f s)", E0, time.perf_counter() - t0)
@@ -95,7 +92,7 @@ def main() -> None:
         return LineString(list(zip(x, y))).intersects(water)
 
     pool = np.flatnonzero(model.hub_active & in_city)
-    ends = pool[np.argsort(-w[pool])][:N_END]
+    ends = pool[np.argsort(-node_mass(w)[pool])][:N_END]
 
     # --- street graph from GTFS shapes; trams run on main roads only --------
     sg_cache = Path("data/cache/streets.pkl")
@@ -159,7 +156,7 @@ def main() -> None:
          "n_tram": sum(c.spec.mode == 0 for c in cands),
          "endpoints": int(len(ends)), "cost_ratio": METRO.cost_per_km / TRAM.cost_per_km}
 
-    cache = Path(f"data/cache/scen_gains_streets_{N_END}.pkl")
+    cache = Path(f"data/cache/scen_gains_streets_{N_END}_{DEMAND}.pkl")
     t1 = time.perf_counter()
     if cache.exists():
         g1 = pickle.load(open(cache, "rb"))

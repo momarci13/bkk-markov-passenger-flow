@@ -107,7 +107,9 @@ főváros jelenleg előkészítés vagy megvalósítás alatt álló kötöttpá
 fejlesztéseit. A modellben az utas vagy egy átszállási csomópontban vár, vagy
 egy vonalszakaszon utazik; a beszállási ráta a menetrendi követési idők első
 két momentumához illeszkedik, a viszonylatválasztás a minimális relatív
-entrópia elvéből következik. Független Poisson-beáramlás mellett a
+entrópia elvéből következik. A kiinduló igényt a Meta 30 méteres
+népességrácsából, logit megállóválasztással becsüljük, amelynek
+módspecifikus konstansait a BKK módok szerinti utasforgalmához kalibráljuk. Független Poisson-beáramlás mellett a
 foglaltságok független Poisson-eloszlásúak, így a modell egzaktul megoldható.
 A hálózatot igényekkel súlyozott hatékonysággal, csomópontonkénti
 elérhetőséggel és az eljutási idők Expected Shortfall mutatójával jellemezzük,
@@ -297,6 +299,23 @@ követési idő maradék élettartama, ezért várható értéke a követési id
 szórásától is függ. A közösségi közlekedés tervezésének és üzemeltetésének
 klasszikus kézikönyve \citet{vuchic2005}.
 
+Az igény térbeli eloszlásának becslése a négylépcsős modellek
+forgalomkeltési és -eloszlási lépésének felel meg. \citet{wilson1971} a
+gravitációs modellek családját a peremfeltételek szerint rendszerezte: a
+termelési oldalon kötött változatban csak az induló forgalom ismert, a
+célpontok vonzereje csupán a választást alakítja. A megálló- vagy
+állomásválasztást jellemzően multinomiális logit modellel írják le
+\citep{mcfadden1974}, amelyben a hozzáférési távolság mellett az állomás
+kínálata is számít; \citet{debrezion2009} a holland vasútállomások példáján
+mutatta meg, hogy az utasok a jobb kiszolgálású, távolabbi állomást is
+választják. Ha sem utasszámláló, sem igénymátrix nem áll rendelkezésre, a
+lakónépesség finom felbontású rácsa pótolhatja; a Meta és a CIESIN
+épületfelismerésen alapuló, kb. $30$~méteres népességrétege
+\citep{tiecke2017} az egész világra elérhető. A lineáris modellek
+forrásvektorának becslése nemnegativitási feltétel mellett legkisebb
+négyzetes feladat, amelyet \citet{lawson1974} aktívhalmaz-algoritmusa, korlátos
+változók esetén \citet{stark1995} módszere pontosan megold.
+
 \subsection{Markov-hálózatok és fázistípusú eloszlások}
 
 \citet{jackson1957} nyílt sorbanállási hálózatai óta ismert, hogy Markov-típusú
@@ -434,6 +453,30 @@ hálózat a HÉV-vonalakat is tartalmazza, az éleket pedig viszonylatonként
 (vonalszakaszonként) tartja nyilván, így a járművön maradás és a
 viszonylatonkénti gyakoriság is modellezhető. A követési idők szabályosak: a $\mathrm{CV}^2$ mediánja \MEDCVSQ, és a
 szakaszok \SHARECVLOW{}\%-án $0{,}1$ alatti.
+
+\subsection{Népesség és utasforgalmi adatok}
+\label{sec:nepesseg}
+
+A kiinduló igény becsléséhez három további adatforrást használunk.
+\begin{enumerate}[label=(\roman*)]
+  \item A lakónépesség térbeli eloszlását a Meta és a CIESIN nagy
+    felbontású településrétegéből (High Resolution Settlement Layer, HRSL)
+    vesszük \citep{tiecke2017}. Ez 1 ívmásodperces (Budapesten kb.
+    $21\times31$~m-es) rács, amelynek budapesti ablakát a nyilvános,
+    felhőoptimalizált GeoTIFF-állományból olvassuk ki. A rács fővároson belüli
+    összege \POPHRSL{} fő, ezt a 2022.~évi népszámlálás \POPCITY{} fős
+    adatához \citep{ksh2023} igazítjuk (szorzó: \POPSCALE). A kerülethatárok
+    a geoBoundaries adatbázisból származnak \citep{runfola2020}.
+  \item A közlekedési módok közötti megoszlás a BKK 2022.~évi adata: az
+    utazások \TGTBUS\%-a autóbusszal, \TGTTRAM\%-a villamossal,
+    \TGTMETRO\%-a metróval, \TGTTROLLEY\%-a trolibusszal és \TGTHEV\%-a
+    HÉV-vel történt \citep{bkkmodal}.
+  \item A KSH kerületi népességi, gépjármű-ellátottsági és ingázási adatai
+    (TIMEA, BP-STAR, a 2022.~évi népszámlálás ingázási táblái) a kutatás
+    idején gépileg nem voltak elérhetők. A módszer ezeket is kezeli
+    (\ref{sec:igeny}.~alfejezet), a dolgozat eredményei azonban nélkülük
+    készültek.
+\end{enumerate}
 
 % =============================================================================
 \section{A Markov-modell}
@@ -599,12 +642,164 @@ $\phi$ & a felszállások 07--09 közötti hányada & $0{,}20$ \\
 $\lambda$ & költségérzékenység & $1/300$~s$^{-1}$ \\
 $D$ & egy út átlagos hossza & $3{,}5$~km \\
 $p_{\mathrm{tr}}$ & átszállási valószínűség leszállás után & $0{,}30$ \\
-$\lambda_h$ & kiinduló utazások rátája & $\propto f_h=\sum_{s\in\Ss_h}f_s$ \\
+$\lambda_h$ & kiinduló utazások rátája & népesség, \ref{sec:igeny} \\
+$\ell$ & hozzáférési távolságérzékenység & $250$~m \\
 \bottomrule
 \end{tabular}
 \end{table}
 
 % =============================================================================
+\subsection{A kiinduló igény: népesség és megállóválasztás}
+\label{sec:igeny}
+
+A $\lambda_h$ forrásráták mondják meg, hol lépnek be az utasok a hálózatba. A
+legegyszerűbb választás, $\lambda_h\propto f_h$, a kínálatot teszi meg az
+igény mértékének, és így a sűrűn kiszolgált buszmegállókat súlyozza túl.
+Ehelyett a lakónépességből indulunk ki, és azt modellezzük, melyik
+csomóponthoz mennek a lakók.
+
+\begin{definicio}[Megállóválasztás]
+Legyen $P_c$ a népességrács $c$ cellájának lakószáma, és rendeljük minden
+csomóponthoz a legmagasabb rendű módját mint osztályt: $k(h)\in\{$metró,
+HÉV, villamos, trolibusz, busz, hajó$\}$. A $c$ cella lakóinak választható
+csomópontjai $\mathcal C(c)=\{h: d_{ch}\le R_{k(h)}\}$, ahol $d_{ch}$ a
+légvonalbeli távolság és $R_k$ az osztály hozzáférési sugara. A $c$ cellából
+a $h$ csomópontot választók aránya
+\[
+  \omega_{ch}=\frac{\exp V_{ch}}{\sum_{h'\in\mathcal C(c)}\exp V_{ch'}},
+  \qquad V_{ch}=-\frac{d_{ch}}{\ell}+\delta_{k(h)},\qquad \delta_{\mathrm{busz}}=0,
+\]
+és a csomópont lakossági tömege $P_h=\sum_c\omega_{ch}P_c$.
+\end{definicio}
+
+Ez multinomiális logit modell \citep{mcfadden1974}: a $\delta_k$
+hozzáférési konstans azt fejezi ki, hogy a lakó a $k$ osztály csomópontjáért
+$\delta_k\ell$ méterrel hosszabb gyaloglást is vállal \citep{debrezion2009}.
+Minden lefedett cella népessége teljesen szétoszlik
+($\sum_h\omega_{ch}=1$), ezért $\sum_hP_h+U=\sum_cP_c$, ahol $U$ a minden
+csomóponttól $R_k$-nál távolabb lakók száma. A sugarak: metró és HÉV
+$1000$~m, villamos $600$~m, trolibusz, busz és hajó $500$~m; a fővárosi
+népesség \POPCOVER\%-a lakik valamely csomópont hozzáférési sugarán belül.
+A forrásráta
+\[
+  \lambda_h=c\,g_{K(h)}P_h ,\qquad g_K=\sigma\!\left(a-b\,\frac{m_K}{1000}\right),
+\]
+ahol $c$ a felszállások teljes számához igazító skála, $g_K$ a $K$ kerület
+közösségi közlekedési hajlandósága, $m_K$ az ezer lakosra jutó
+személygépkocsik száma és $\sigma$ a logisztikus függvény (ha az ingázás
+módok szerinti megoszlása ismert, $g_K$ közvetlenül az). Kerületi adatok
+hiányában a dolgozatban $g\equiv1$.
+
+\paragraph{Kalibráció a módok szerinti utasforgalomhoz.}
+A modell linearitása a kalibrációt is egyszerűvé teszi.
+
+\begin{allitas}
+\label{all:modresp}
+Legyen $B_{hm}=\sum_{s\in\Ss_h,\ \mathrm{mód}(s)=m}\theta_sa_s$ a $h$
+csomópontból az $m$ mód szakaszaira való beszállás intenzitása, és
+$M=(-T)^{-1}B$ (csak a csomóponti sorokat tekintve). Ekkor az $m$ mód
+időegységenkénti felszállásainak várható száma
+\[
+  b_m(\bm\lambda)=\bm\lambda^{\top}M\bm e_m ,
+\]
+vagyis $M_{hm}$ a $h$-ból induló egy utazás során várható $m$ módú
+felszállások száma.
+\end{allitas}
+
+\begin{proof}
+Az $m$ mód felszállásainak intenzitása $\sum_hL_hB_{hm}$, és az
+\ref{sec:megoldas}.~fejezet szerint $\bm L^{\top}=\bm\lambda^{\top}(-T)^{-1}$.
+Az $M$ kiszámítása egyetlen ritka LU-felbontást és módonként egy
+visszahelyettesítést igényel.
+\end{proof}
+
+A linearitásból adódó első lehetőség a kerületenkénti szorzók becslése: $\lambda_h=\mu_{K(h)}\pi_h$, ahol $\pi_h$ a
+$\delta=0$ melletti forrásráta. Ekkor $\bm b=G\bm\mu$, ahol
+$G_{mK}=\sum_{h\in K}\pi_hM_{hm}$, és a
+\[
+  \min_{\bm\mu\ge\bm0}\ \bigl\|D(G\bm\mu-\bm b^{*})\bigr\|^2+\rho\|\bm\mu-\bm1\|^2,
+  \qquad D=\operatorname{diag}(1/b^{*}_m),
+\]
+feladat nemnegatív legkisebb négyzetes feladat \citep{lawson1974}. Mivel
+$\operatorname{rang}G\le5$ (öt módra ismert az utasforgalom), a
+\NNLSGROUPS{} szorzó (a 23 kerület és a város határán kívüli csomópontok
+csoportja) $\rho=0$ mellett nem azonosítható: a megoldáshalmaz legalább
+$\NNLSGROUPS-5$ dimenziós. $\rho>0$ esetén a célfüggvény szigorúan konvex,
+így a minimum egyértelmű, de a regularizálás határozza meg. Az adatok
+ennél többet is mutatnak. A relatív eltérések négyzetes középértéke
+$\bm\mu=\bm1$ mellett \NNLSRMSPRIOR\%, a legjobb nemnegatív szorzókkal
+\NNLSRMSFREE\%, de ehhez \NNLSZERO{} szorzó nulla, a legnagyobb pedig
+\NNLSMAX. A $[0{,}5;\,2]$ intervallumra korlátozott szorzókkal
+\citep{stark1995} az eltérés \NNLSRMSBOX\%, és \NNLSBOXB{} szorzó a
+korláton van. A metró részesedése a korlátlan esetben is csak \NNLSMETRO\%.
+A módok szerinti megoszlásból tehát nem becsülhető, melyik kerületből indul
+az igény, és a metró alacsony részesedését nem a kerületek közötti eloszlás
+okozza.
+
+A megoszlást valójában az határozza meg, hogy az utazások melyik
+csomópontban kezdődnek: egy metróállomásról induló utazás felszállásainak
+akár $90\%$-a metróra esik. Ezért a hozzáférési konstansokat kalibráljuk.
+Legyen
+\[
+  s_m(\bm\delta)=\frac{\bigl(\bm\pi(\bm\delta)^{\top}M\bigr)_m}{\sum_{m'}\bigl(\bm\pi(\bm\delta)^{\top}M\bigr)_{m'}},
+  \qquad
+  \min_{|\delta_k|\le2}\ \sum_m\bigl(\ln s_m(\bm\delta)-\ln s^{*}_m\bigr)^2 ,
+\]
+ahol $\bm\pi(\bm\delta)$ a megállóválasztásból adódó forrásvektor. Négy
+ismeretlen ($\delta$ a metróra, a HÉV-re, a villamosra és a trolibuszra) és
+négy független részesedés áll szemben (a részesedések összege $1$), tehát
+elérhető cél esetén a rendszer pontosan megoldható. A $|\delta_k|\le2$
+korlát azt jelenti, hogy $|\delta_k|\ell\le500$~m, azaz egy osztály
+hozzáférési előnye nem haladhatja meg a kötöttpályás és a buszos
+hozzáférési sugár különbségét. A becslés (megbízhatósági tartományos
+nemlineáris legkisebb négyzetek) eredménye: $\delta_{\mathrm{metró}}=\DELTAMETRO$
+(\DELTAMMETRO~m, a korláton), $\delta_{\mathrm{HÉV}}=\DELTAHEV$
+(\DELTAMHEV~m), $\delta_{\mathrm{villamos}}=\DELTATRAM$ (\DELTAMTRAM~m) és
+$\delta_{\mathrm{troli}}=\DELTATROLLEY$ (\DELTAMTROLLEY~m). A
+\ref{tab:modal}.~táblázat szerint a HÉV részesedése pontosan, a villamosé és
+a trolibuszé közelítőleg illeszkedik. A metró részesedése az indulásarányos
+\DEPMSMETRO\%-ról \MSBMETRO\%-ra nő, de a $25{,}6\%$-os értéktől elmarad.
+A különbség okát a \ref{sec:korlat}.~fejezet tárgyalja: a metróutazások
+jelentős része ráhordó buszokról és villamosokról való átszállással kezdődik,
+amit a csomópontonként, cél nélkül választó utas nem követ.
+
+\begin{table}[!htbp]
+\centering
+\caption{A felszállások megoszlása módok szerint (\%).}
+\label{tab:modal}
+\small
+\begin{tabular}{lrrrrr}
+\toprule
+ & Busz & Villamos & Metró & Troli & HÉV \\
+\midrule
+\csname @@input\endcsname generated/table_modal.tex
+\bottomrule
+\end{tabular}
+\end{table}
+
+\paragraph{Az utazások célja.}
+A hálózati mutatókhoz (\ref{sec:halozat}.~fejezet) az utazások célját is meg
+kell adni. Munkahelyi adatok hiányában a célpontok vonzerejét a csomópont
+indulásszámával közelítjük ($a_d=f_d$), és termelési oldalon kötött
+gravitációs modellt használunk \citep{wilson1971}:
+\[
+  W_{od}=\lambda_o\,\frac{a_d\,e^{-\beta t_{od}}}{\sum_{d'\ne o}a_{d'}e^{-\beta t_{od'}}},
+  \qquad \sum_{d}W_{od}=\lambda_o .
+\]
+Alapesetben $\beta=0$, mert a hatékonyság és az elérhetőség a távolságot a
+$1/t_{od}$ tényezővel már figyelembe veszi; az $e^{-\beta t}$ szorzó ezt
+megkettőzné, és a mutatókat a rövid utazásokra szűkítené. Érzékenységi
+vizsgálatként $\beta$-t úgy választjuk meg, hogy az $o$--$d$ párok átlagos
+eljutási ideje egyezzen a Markov-modell várható utazási idejével
+(\GRAVMEAN{} perc). Rögzített $o$ mellett a célpont eloszlása $t_{od}$-ben
+Gibbs-eloszlás, így $\frac{\mathrm d}{\mathrm d\beta}\E_\beta[t]=-\Var_\beta[t]\le0$:
+az átlag $\beta$-ban monoton csökken, a megoldás ($\beta=\GRAVBETA$~perc$^{-1}$)
+felezéssel egyértelműen megkapható. Ha a népszámlálás kerületek közötti
+ingázási mátrixa ($Q_{KL}$) elérhető, a súlyok
+$W_{od}=Q_{K(o)L(d)}\lambda_oa_de^{-\beta t_{od}}/Z_{K(o)L(d)}$ alakban
+számolhatók, ahol $Z_{KL}$ a $K\times L$ blokk normálója, így minden blokk
+összege pontosan $Q_{KL}$.
+
 \section{Egzakt megoldás}
 \label{sec:megoldas}
 
@@ -697,10 +892,15 @@ pedig: $h\to s$ a $1/\theta_s$ várható várakozással, $s\to s'$ és $s\to h'$
 a $\tau_s$ menetidővel. A hatékonyság a Latora--Marchiori-féle mutató
 \citep{latora2001} igényekkel súlyozott változata:
 \[
-  E=\frac{\sum_{o\ne d}w_ow_d\,t_{od}^{-1}}{\sum_{o\ne d}w_ow_d}
-  \quad[\mathrm s^{-1}],\qquad w_h=\lambda_h/\Lambda .
+  E=\frac{\sum_{o\ne d}W_{od}\,t_{od}^{-1}}{\sum_{o\ne d}W_{od}}
+  \quad[\mathrm s^{-1}],
 \]
+ahol $W_{od}$ az \ref{sec:igeny}.~alfejezet szerinti $o$--$d$ igény.
 \end{definicio}
+
+Szorzat alakú súlyokra ($W_{od}=w_ow_d$) ez a szokásos súlyozott
+hatékonyság; a mutatók minden alábbi tulajdonsága tetszőleges nemnegatív
+$W$-re érvényes.
 
 \subsection{Csomópontok kiesése}
 
@@ -721,8 +921,8 @@ területi hatásának mérésére csomópontonkénti elérhetőséget használun
 \citet{hansen1959} potenciálalapú mértékének eljutási idővel súlyozott
 változata:
 \[
-  A_o=\sum_{d\ne o}\frac{w_d}{t_{od}}\quad[\mathrm s^{-1}],\qquad
-  \Delta A_K=\frac{\sum_{o\in K}w_oA_o'}{\sum_{o\in K}w_oA_o}-1,
+  A_o=\frac{1}{\lambda_o}\sum_{d\ne o}\frac{W_{od}}{t_{od}}\quad[\mathrm s^{-1}],\qquad
+  \Delta A_K=\frac{\sum_{o\in K}\lambda_oA_o'}{\sum_{o\in K}\lambda_oA_o}-1,
 \]
 ahol $K$ egy kerület csomópontjainak halmaza, $A_o'$ pedig a fejlesztés utáni
 elérhetőség. A korábbi dolgozatunkhoz hasonlóan a legrosszabb esetek
@@ -731,7 +931,7 @@ súlyát is mérni szeretnénk, ezért az Expected Shortfall mutatót
 alkalmazzuk.
 
 \begin{definicio}[Az eljutási idők Expected Shortfall mutatója]
-Tekintsük az $o\ne d$ párokon a $t_{od}$ eljutási időket $w_ow_d$
+Tekintsük az $o\ne d$ párokon a $t_{od}$ eljutási időket $W_{od}$
 súlyokkal (a súlyokat egyre normálva). Az $\alpha$ szintű Expected Shortfall
 \[
   \mathrm{ES}_\alpha=\frac{1}{1-\alpha}\int_\alpha^1 F^{-1}(u)\,\mathrm du ,
@@ -806,7 +1006,7 @@ egymás után alkalmazzuk, ami a vonalak kombinált használatát is megengedi.
 \label{all:szubmod}
 Jelölje $t^{(\ell)}_{od}$ az \eqref{eq:minplus} szerinti időt, ha egyedül az
 $\ell$ vonalat adjuk a hálózathoz, és legyen
-$F(\Ls)=\sum_{o\ne d}w_ow_d\max\bigl(t_{od}^{-1},\max_{\ell\in\Ls}(t^{(\ell)}_{od})^{-1}\bigr)$.
+$F(\Ls)=\sum_{o\ne d}W_{od}\max\bigl(t_{od}^{-1},\max_{\ell\in\Ls}(t^{(\ell)}_{od})^{-1}\bigr)$.
 Ekkor $F$ monoton és szubmoduláris, így a mohó választás legalább a
 $(1-1/e)$-szeresét éri el az optimális $k$ vonalas javulásnak
 \citep{nemhauser1978}.
@@ -1198,15 +1398,21 @@ forgatókönyvével közvetlenül vizsgálni lehet.
 \label{sec:korlat}
 
 \begin{itemize}
-  \item \textbf{Igény.} A kiinduló igény az indulásokkal arányos. Népességi,
-    munkahelyi vagy jegyadatok nélkül az abszolút szintek, különösen a módok
-    közötti megoszlás, szemléltető jellegűek; a metró részesedése a
-    valóságosnál alacsonyabb. A térbeli mintázatot igénymátrix vagy
-    utasszámláló adat kalibrálná; a lineáris szerkezet miatt a forrásvektor
-    nemnegatív legkisebb négyzetes feladattal becsülhető.
+  \item \textbf{Igény.} A kiinduló igény a HRSL-népességrácsból,
+    kalibrált megállóválasztással adódik, de a célpontok vonzerejét a
+    menetrendi indulások közelítik, és kerületi gépjármű-ellátottsági,
+    illetve ingázási adatok nélkül $g\equiv1$. A népességréteg 2016--2020
+    közötti épületállományon alapul, a népszámlálási összeg 2022-es.
   \item \textbf{Útvonalválasztás és kapacitás.} Az utas csomópontonként
     választ, nem célállomás felé halad, és a modell nem számol a járművek
-    befogadóképességével. Emiatt az átszállásmentesség kényelmi értéke és a
+    befogadóképességével. Ez a módok közötti megoszlás fő torzítása: a metró
+    részesedése a kalibráció után is \MSBMETRO\% a $25{,}6\%$ helyett. A
+    \ref{sec:igeny}.~alfejezet szerint ezt nem a forrásvektor okozza, hiszen
+    a kerületi szorzók nemnegatív legkisebb négyzetes becslése sem javít
+    rajta érdemben, hanem az, hogy a ráhordó járatokról a metróra irányuló,
+    célhoz kötött átszállásokat a modell nem követi. Mód- vagy
+    csomópontfüggő átszállási valószínűség, illetve célállomás szerinti
+    állapottér-bővítés ezt kezelné. Emiatt az átszállásmentesség kényelmi értéke és a
     zsúfoltság csökkenése (a Bajcsy-Zsilinszky úti villamos fő haszna) csak
     részben jelenik meg.
   \item \textbf{Új megállók.} A tervek meglévő csomópont nélküli megállói
@@ -1221,7 +1427,9 @@ forgatókönyvével közvetlenül vizsgálni lehet.
 \end{itemize}
 
 A továbbfejlesztés legfontosabb iránya az igényoldali adatok bevonása
-(utasszámláló és jegyadatok, a lakásépítési tervek térbeli adatai), valamint a
+(a KSH kerületi ingázási mátrixa és gépjármű-ellátottsági adatai, amelyeket
+a módszer már kezel, továbbá az utasszámláló és jegyadatok, valamint a
+lakásépítési tervek térbeli adatai), valamint a
 repülőtéri kapcsolat vizsgálata, amelyet a korábbi dolgozatunk a hálózat
 legsérülékenyebb pontjaként azonosított, és amelyhez a tervezett repülőtéri
 vasúti kapcsolat a GTFS-adatokban még nem szerepel.
@@ -1327,6 +1535,11 @@ transport networks: mitigation effects of real-time information.
 Chriqui, C., Robillard, P. (1975). Common bus lines. \emph{Transportation
 Science}, 9(2), 115--121.
 
+\bibitem[Debrezion et~al.(2009)]{debrezion2009}
+Debrezion, G., Pels, E. és Rietveld, P. (2009): Modelling the joint access
+mode and railway station choice. \emph{Transportation Research Part E},
+45(1), 270--283.
+
 \bibitem[Derrible és Kennedy(2010)]{derrible2010}
 Derrible, S., Kennedy, C. (2010). Characterizing metro networks: state, form,
 and structure. \emph{Transportation}, 37(2), 275--297.
@@ -1385,6 +1598,10 @@ problem. \emph{Information Processing Letters}, 70(1), 39--45.
 Kingman, J.~F.~C. (1993). \emph{Poisson Processes}. Oxford University Press,
 Oxford.
 
+\bibitem[KSH(2023)]{ksh2023}
+Központi Statisztikai Hivatal (2023): \emph{Népszámlálás 2022 -- Budapest
+népessége}. Budapest: KSH. \url{https://nepszamlalas2022.ksh.hu}.
+
 \bibitem[Kóczy et~al.(2022)]{koczy2022}
 Kóczy, L.~Á., Csercsik, D., Sziklai, B.~R. (2022). Nord Stream 2: A prelude to
 war. \emph{Energy Strategy Reviews}, 44.
@@ -1402,10 +1619,19 @@ Prentice-Hall, Englewood Cliffs.
 Latora, V., Marchiori, M. (2001). Efficient behavior of small-world networks.
 \emph{Physical Review Letters}, 87(19), 198701.
 
+\bibitem[Lawson és Hanson(1974)]{lawson1974}
+Lawson, C.~L. és Hanson, R.~J. (1974): \emph{Solving Least Squares Problems}.
+Englewood Cliffs: Prentice-Hall.
+
 \bibitem[Mattsson és Jenelius(2015)]{mattsson2015}
 Mattsson, L.-G., Jenelius, E. (2015). Vulnerability and resilience of
 transport systems -- A discussion of recent research. \emph{Transportation
 Research Part A}, 81, 16--34.
+
+\bibitem[McFadden(1974)]{mcfadden1974}
+McFadden, D. (1974): Conditional logit analysis of qualitative choice
+behavior. In: Zarembka, P. (szerk.): \emph{Frontiers in Econometrics}. New
+York: Academic Press, 105--142.
 
 \bibitem[Metropol(2022)]{metropol2022}
 Metropol (2022). A Metropol megmutatja: ezen a nyomvonalon fog járni az 5-ös
@@ -1463,6 +1689,17 @@ and practice. \emph{Regional Science and Urban Economics}, 7(1--2),
 Spiess, H., Florian, M. (1989). Optimal strategies: A new assignment model for
 transit networks. \emph{Transportation Research Part B}, 23(2), 83--102.
 
+\bibitem[Stark és Parker(1995)]{stark1995}
+Stark, P.~B. és Parker, R.~L. (1995): Bounded-variable least-squares: an
+algorithm and applications. \emph{Computational Statistics}, 10(2), 129--141.
+
+\bibitem[Tiecke et~al.(2017)]{tiecke2017}
+Tiecke, T.~G., Liu, X., Zhang, A., Gros, A., Li, N., Yetman, G., Kilic, T.,
+Murray, S., Blankespoor, B., Prydz, E.~B. és Dang, H.-A.~H. (2017): Mapping
+the world population one building at a time. \emph{arXiv:1712.05839}.
+Adat: Meta és CIESIN, High Resolution Settlement Layer v1.5,
+\url{https://dataforgood-fb-data.s3.amazonaws.com/hrsl-cogs/}.
+
 \bibitem[von Ferber et~al.(2009)]{vonferber2009}
 von Ferber, C., Holovatch, T., Holovatch, Yu., Palchykov, V. (2009). Public
 transport networks: empirical analysis and modeling. \emph{The European
@@ -1472,10 +1709,19 @@ Physical Journal B}, 68(2), 261--275.
 Vuchic, V.~R. (2005). \emph{Urban Transit: Operations, Planning, and
 Economics}. Wiley, Hoboken.
 
+\bibitem[Wikipédia(2026)]{bkkmodal}
+Wikipédia (2026): Budapest tömegközlekedése (a BKK 2022.~évi, módok szerinti
+utasforgalmi adatai). \url{https://hu.wikipedia.org/wiki/Budapest_tömegközlekedése},
+letöltve: 2026.~október~5.
+
 \bibitem[Wilson(1969)]{wilson1969}
 Wilson, A.~G. (1969). The use of entropy maximising models in the theory of
 trip distribution, mode split and route split. \emph{Journal of Transport
 Economics and Policy}, 3(1), 108--126.
+
+\bibitem[Wilson(1971)]{wilson1971}
+Wilson, A.~G. (1971): A family of spatial interaction models, and associated
+developments. \emph{Environment and Planning A}, 3(1), 1--32.
 
 \bibitem[Zhu et~al.(2024)]{zhu2024}
 Zhu, J., Khan, A., Akcora, C.~G. (2024). Data depth and core-based trend
@@ -1538,10 +1784,12 @@ eredményétől függően akár etikai eljárást is kezdeményezhet ellenem.
 \label{app:repro}
 
 A modellt a \texttt{bkk-markov-passenger-flow} Python-csomag valósítja meg
-(NumPy, SciPy, pandas, shapely). A dolgozat minden száma, ábrája és
+(NumPy, SciPy, pandas, shapely, rasterio). A dolgozat minden száma, ábrája és
 táblázata az alábbi lépésekkel állítható elő:
 \begin{enumerate}
   \item a BKK GTFS-menetrend (\FEEDVER) letöltése a MobilityData tükréről;
+  \item \texttt{python scripts/tdk\_demand\_data.py} (a HRSL-népességrács
+    budapesti ablaka, megállóválasztás, kalibráció, igénymátrix);
   \item \texttt{python scripts/tdk\_analysis.py --date 20260609}
     (stacionárius megoldás, ellenőrzés, érzékenység, sérülékenység);
   \item \texttt{python scripts/tdk\_scenarios.py} (jelölt vonalak);
@@ -1553,6 +1801,8 @@ táblázata az alábbi lépésekkel állítható elő:
 \end{enumerate}
 A megvalósítást automatikus tesztek ellenőrzik (a részgenerátor szerkezete,
 Little törvénye, a Monte-Carlo-összevetés, a min-plusz frissítés egyezése a
-teljes Dijkstra-számítással, az utcagráfon vezetett útvonalak).
+teljes Dijkstra-számítással, az utcagráfon vezetett útvonalak, a népesség
+megmaradása a megállóválasztásban, a módok szerinti felszállások
+linearitása és a kalibráció visszaadja az ismert paramétereket).
 
 \end{document}
