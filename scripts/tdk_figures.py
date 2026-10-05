@@ -6,7 +6,7 @@ Figures of the TDK paper from data/results/ (run tdk_analysis.py first).
 
     fig_flow_map.pdf      steady-state passenger flow on the real network
     fig_critical_map.pdf  boardings and the most critical interchange hubs
-    fig_transient.pdf     fill-up of the network from an empty state
+    fig_new_lines.pdf     proposed new lines and the planned M5
 """
 from __future__ import annotations
 
@@ -23,7 +23,8 @@ from matplotlib.collections import LineCollection
 from matplotlib.colors import LinearSegmentedColormap, LogNorm
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from budapest_basemap import draw_basemap, eov, load_districts, load_shapes, scale_bar  # noqa: E402
+from budapest_basemap import (draw_basemap, eov, load_districts, load_shapes,  # noqa: E402
+                              scale_bar, shape_ids_by_mode)
 
 RES = Path(__import__("os").environ.get("TDK_RES", "data/results"))
 OUT = Path("tdk/figures")
@@ -130,24 +131,70 @@ def fig_critical(districts, shapes, k: int = 10):
     plt.close(fig)
 
 
-def fig_transient():
-    tr = pd.read_csv(RES / "transient.csv")
-    R = json.load(open(RES / "results.json"))
-    t95 = R["transient"]["t95_min"]
-    fig, ax = plt.subplots(figsize=(4.2, 2.1))
-    ax.plot(tr.t_s / 60, tr.frac * 100, color="#2a78d6", lw=2)
-    ax.axhline(95, color=MUTED, lw=0.6, ls=(0, (3, 3)))
-    ax.axvline(t95, color=MUTED, lw=0.6, ls=(0, (3, 3)))
-    ax.text(t95 + 2, 40, f"95%-os feltöltődés: {t95:.0f} perc", fontsize=7, color=INK2)
-    ax.set_xlabel("idő 07:00 óta [perc]")
-    ax.set_ylabel(r"$\sum_x m_x(t)\,/\,\sum_x L_x$ [%]")
-    ax.set_xlim(0, 120)
-    ax.set_ylim(0, 102)
-    for s in ("top", "right"):
-        ax.spines[s].set_visible(False)
-    ax.grid(axis="y", color="#e6e5e1", lw=0.5)
-    fig.savefig(OUT / "fig_transient.pdf", bbox_inches="tight")
-    fig.savefig(OUT / "fig_transient.png", dpi=170, bbox_inches="tight")
+def fig_new_lines(districts, shapes):
+    """Proposed lines (U1..U5) and the planned M5 on top of the rail network."""
+    nl = pd.read_csv(RES / "new_lines.csv")
+    sc = json.load(open(RES / "scenarios.json"))
+    by_mode = shape_ids_by_mode()
+    metro = load_shapes(shape_ids=by_mode.get(1, set()))
+    hev = load_shapes(shape_ids=by_mode.get(109, set()))
+    tram = load_shapes(shape_ids=by_mode.get(0, set()))
+    fig, ax = plt.subplots(figsize=(6.3, 6.6))
+    draw_basemap(ax, districts, network_lines=shapes, labels=False)
+    ax.add_collection(LineCollection(tram, colors="#8e8c86", linewidths=0.6, zorder=2.2))
+    ax.add_collection(LineCollection(hev, colors="#52514e", linewidths=1.0,
+                                     linestyles=(0, (4, 2)), zorder=2.3))
+    ax.add_collection(LineCollection(metro, colors="#52514e", linewidths=1.6, zorder=2.4))
+    cols = ["#2a78d6", "#eb6834", "#1baf7a", "#eda100", "#e87ba4"]
+    allx, ally = [], []
+    geoms = []
+    for k, rec in enumerate(sc["selected"]):
+        g = nl[nl.line == rec["name"]].sort_values("order")
+        x, y = eov(g.lon.values, g.lat.values)
+        geoms.append((rec, x, y, cols[k]))
+        allx += list(x); ally += list(y)
+    g = nl[nl.line == "M5A"].sort_values("order")
+    mx, my = eov(g.lon.values, g.lat.values)
+    allx += list(mx); ally += list(my)
+    cx0, cy0 = np.mean(allx), np.mean(ally)
+    for rec, x, y, col in geoms:
+        lw = 3.2 if rec["mode"] == "metró" else 2.2
+        ax.plot(x, y, color="white", lw=lw + 1.8, solid_capstyle="round", zorder=4)
+        ax.plot(x, y, color=col, lw=lw, solid_capstyle="round", zorder=4.1)
+        ax.scatter(x, y, s=14, facecolor="white", edgecolor=col, lw=1.0, zorder=4.2)
+        # label at the end farther from the centre, pushed outwards
+        e = 0 if np.hypot(x[0] - cx0, y[0] - cy0) > np.hypot(x[-1] - cx0, y[-1] - cy0) else -1
+        dx, dy = x[e] - cx0, y[e] - cy0
+        nrm = max(np.hypot(dx, dy), 1.0)
+        ax.annotate(rec["name"], xy=(x[e], y[e]),
+                    xytext=(x[e] + 550 * dx / nrm, y[e] + 550 * dy / nrm),
+                    fontsize=7.5, fontweight="bold", color=INK, ha="center", va="center",
+                    zorder=5, arrowprops=dict(arrowstyle="-", color=col, lw=0.8),
+                    bbox=dict(boxstyle="round,pad=0.18", fc="white", ec=col, lw=1.0))
+    ax.plot(mx, my, color=INK, lw=1.8, ls=(0, (2.5, 1.5)), zorder=4.3)
+    ax.scatter(mx, my, s=12, facecolor="white", edgecolor=INK, lw=0.8, zorder=4.4)
+    ax.annotate("M5", xy=(mx[0], my[0]), xytext=(mx[0] - 700, my[0] + 300), fontsize=7.5,
+                fontweight="bold", color="white", ha="center", va="center", zorder=5,
+                arrowprops=dict(arrowstyle="-", color=INK, lw=0.8),
+                bbox=dict(boxstyle="round,pad=0.18", fc=INK, ec="none"))
+    pad = 1800.0
+    x0, x1 = min(allx) - pad, max(allx) + pad
+    y0, y1 = min(ally) - pad, max(ally) + pad
+    half = max(x1 - x0, y1 - y0) / 2           # square window
+    ax.set_xlim((x0 + x1) / 2 - half, (x0 + x1) / 2 + half)
+    ax.set_ylim((y0 + y1) / 2 - half, (y0 + y1) / 2 + half)
+    from matplotlib.lines import Line2D
+    handles = [Line2D([], [], color="#52514e", lw=1.6, label="meglévő metró"),
+               Line2D([], [], color="#52514e", lw=1.0, ls=(0, (4, 2)), label="meglévő HÉV"),
+               Line2D([], [], color="#8e8c86", lw=0.6, label="meglévő villamos"),
+               Line2D([], [], color=INK, lw=1.8, ls=(0, (2.5, 1.5)), label="tervezett M5 (A)"),
+               Line2D([], [], color="#2a78d6", lw=2.2, label="javasolt villamos (U1–U5)")]
+    ax.legend(handles=handles, loc="lower right", frameon=True, fontsize=6.3,
+              labelcolor=INK2, handlelength=2.4, facecolor="white", edgecolor="none",
+              framealpha=0.9)
+    scale_bar(ax, km=2)
+    fig.savefig(OUT / "fig_new_lines.pdf", bbox_inches="tight")
+    fig.savefig(OUT / "fig_new_lines.png", dpi=170, bbox_inches="tight")
     plt.close(fig)
 
 
@@ -157,7 +204,8 @@ def main():
     shapes = load_shapes()
     fig_flow(districts, shapes)
     fig_critical(districts, shapes)
-    fig_transient()
+    if (RES / "scenarios.json").exists():
+        fig_new_lines(districts, shapes)
 
 
 if __name__ == "__main__":

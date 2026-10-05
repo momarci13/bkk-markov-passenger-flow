@@ -1,9 +1,10 @@
 % =============================================================================
-%  TDK-dolgozat (Budapesti Corvinus Egyetem, 2026/27) — Vonalszintű nyílt
-%  Markov-hálózat a budapesti közösségi közlekedés utasáramlására
+%  TDK-dolgozat (Budapesti Corvinus Egyetem, 2026/27)
+%  Vonalszintű nyílt Markov-hálózat a budapesti közösségi közlekedésre:
+%  utasáramlás, sérülékenység és hálózatfejlesztés
 %  Formai előírások: Times New Roman 12, 1,5-es sorköz, sorkizárt, 2,5 cm margó.
-%  Minden szám a scripts/tdk_analysis.py futtatásából származik
-%  (BKK GTFS 2572.20260604, szolgáltatási nap: 2026. június 9., kedd).
+%  Minden szám a scripts/tdk_analysis.py és scripts/tdk_scenarios.py
+%  futtatásából származik (BKK GTFS 2572.20260604, 2026. június 9., kedd).
 % =============================================================================
 \documentclass[12pt,a4paper]{article}
 
@@ -28,7 +29,6 @@
 \newtheorem{allitas}[tetel]{Állítás}
 \theoremstyle{definition}
 \newtheorem{definicio}[tetel]{Definíció}
-\newtheorem{felteves}[tetel]{Feltevés}
 \theoremstyle{remark}
 \newtheorem{megjegyzes}[tetel]{Megjegyzés}
 
@@ -57,7 +57,7 @@
 % --- A futtatásból származó számok (scripts/tdk_tex_numbers.py generálja) ---
 \input{generated/numbers}
 
-\hyphenation{va-ló-szí-nű-sé-gi ge-ne-rá-tor-mát-rix cso-mó-pont cso-mó-pon-tok}
+\hyphenation{va-ló-szí-nű-sé-gi cso-mó-pont cso-mó-pon-tok vo-nal-sza-kasz}
 
 \newcommand{\E}{\mathbb{E}}
 \newcommand{\Var}{\operatorname{Var}}
@@ -65,6 +65,7 @@
 \newcommand{\Hs}{\mathcal{H}}
 \newcommand{\Ss}{\mathcal{S}}
 \newcommand{\Xs}{\mathcal{X}}
+\newcommand{\Ls}{\mathcal{L}}
 
 \begin{document}
 \renewcommand{\abstractname}{Összefoglaló}
@@ -76,9 +77,10 @@
   {Tudományos Diákköri Konferencia, 2026.~őszi félév}\\[2pt]
   {[Szekció neve]}\\[3.5cm]
   {\LARGE\bfseries Vonalszintű nyílt Markov-hálózat\\[4pt]
-   a budapesti közösségi közlekedés\\[4pt] utasáramlására\par}
+   a budapesti közösségi közlekedésre\par}
   \vspace{0.8cm}
-  {\large Egzakt megoldás és sérülékenységi elemzés a BKK GTFS-adatai alapján\par}
+  {\large Utasáramlás, sérülékenység és hálózatfejlesztés\\
+   a BKK nyilvános menetrendi adatai alapján\par}
   \vfill
   \begin{flushright}
     \textbf{Szerző:} Molnár Marcell, [szak, évfolyam]\\
@@ -92,25 +94,26 @@
 \begin{abstract}
 \noindent
 A dolgozat a BKK nyilvános GTFS-menetrendjéből folytonos idejű Markov-modellt
-épít a budapesti közösségi közlekedés utasáramlására. Az utas állapota vagy
-egy átszállási csomópontban való várakozás, vagy egy vonalszakaszon való
-utazás, így a járművön maradás és a menetidő a dinamika része. A beszállási
-rátát a menetrendi követési idők első két momentumához illesztjük, ami
-szabályos menetrendnél a gyakoriság kétszerese. A viszonylatválasztást a
-minimális relatív entrópia elvéből vezetjük le, és megmutatjuk, hogy a
-Poisson-folyamatok ritkítása ezt pontosan megvalósítja. Független
-Poisson-beáramlás mellett az állapotok foglaltsága minden időpontban független
-Poisson-eloszlású, az utazási idő fázistípusú, így a modell egyetlen ritka
-lineáris egyenletrendszerrel egzaktul megoldható, a sztochasztikus szimuláció
-pedig csak ellenőrzésre kell. A 2026.~június 9-i reggeli csúcsra
-alkalmazva a modell a budapesti átszállóközpontok ismert sorrendjét adja, az
-igényekkel súlyozott hatékonyságon alapuló sérülékenységi elemzés pedig
-megmutatja, hogy egy csomópont hálózati szerepe nem azonos a forgalmával. Az
-eredményeket valós Budapest-térképen mutatjuk be.
+épít a budapesti közösségi közlekedés utasáramlására. Az utas vagy egy
+átszállási csomópontban vár, vagy egy vonalszakaszon utazik; a beszállási
+ráta a menetrendi követési idők első két momentumához illeszkedik, a
+viszonylatválasztás a minimális relatív entrópia elvéből következik, és ezt a
+Poisson-folyamatok ritkítása pontosan megvalósítja. Független
+Poisson-beáramlás mellett a foglaltságok minden időpontban független
+Poisson-eloszlásúak, az utazási idő fázistípusú, így a modell egyetlen ritka
+lineáris egyenletrendszerrel egzaktul megoldható. A 2026.~június~9-i reggeli
+csúcsra a modell a budapesti átszállóközpontok ismert sorrendjét adja.
+Igényekkel súlyozott hatékonysági mutatóval rangsoroljuk a csomópontok
+kritikusságát, majd megmutatjuk, hogy egy új vonal hatása min-plusz
+mátrixművelettel pontosan kiszámítható. Ezzel \NCAND{} jelölt metró- és
+villamosvonal közül mohó algoritmussal választjuk ki az egységnyi
+építési költségre legnagyobb javulást hozó öt vonalat, és összevetjük őket a
+tervezett M5 metróval. Az eredményeket valós Budapest-térképeken mutatjuk be.
 
 \medskip\noindent
 \textbf{Kulcsszavak:} folytonos idejű Markov-lánc, nyílt sorbanállási hálózat,
-fázistípusú eloszlás, minimális relatív entrópia, GTFS, hálózati sérülékenység.
+minimális relatív entrópia, hálózati sérülékenység, hálózattervezés,
+szubmoduláris optimalizálás, GTFS.
 \end{abstract}
 
 \newpage
@@ -123,44 +126,49 @@ fázistípusú eloszlás, minimális relatív entrópia, GTFS, hálózati sérü
 
 A BKK járatain munkanaponként átlagosan $3{,}4$~millió felszállás történik
 \citep{bkk2024}. A térben és időben felbontott utasforgalom (hány utas vár egy
-csomópontban, mekkora a terhelés egy vonalszakaszon) azonban nyilvános
-adatokból közvetlenül nem figyelhető meg: a menetrend GTFS formátumban
-szabadon elérhető, az utasszámláló és jegyadatok viszont nem. Ebből a helyzetből
+csomópontban, mekkora a terhelés egy vonalszakaszon) nyilvános adatokból
+közvetlenül nem figyelhető meg: a menetrend GTFS formátumban szabadon
+elérhető, az utasszámláló és jegyadatok viszont nem. Ebből a helyzetből
 természetesen adódik egy olyan valószínűségi modell, amely a menetrend által
 meghatározott kínálatból és néhány átlátható feltevésből vezeti le az
-áramlásokat. Egy ilyen modell nem helyettesíti a mért utasszámokat, de
-kiindulópontot ad az adatasszimilációhoz, és alkalmas a hálózat szerkezeti
-sérülékenységének vizsgálatára.
+áramlásokat. Egy ilyen modell kiindulópontot ad a mért adatok későbbi
+beépítéséhez, alkalmas a hálózat szerkezeti sérülékenységének vizsgálatára,
+és lehetővé teszi, hogy hálózatfejlesztési változatokat egységes keretben
+hasonlítsunk össze.
 
-\paragraph{Kutatási kérdés.}
-Felépíthető-e kizárólag nyilvános menetrendi adatokból olyan utasáramlási
-modell, amely (i)~valószínűség-elméletileg következetes (helyes
-mértékegységek, állomány és áramlás megkülönböztetése, a járművön maradás
-modellezése), (ii)~a teljes budapesti hálózaton egzaktul megoldható, és
-(iii)~értelmezhető választ ad arra, mely csomópontok kiesése rontja leginkább
-a hálózat teljesítményét?
+\paragraph{Kutatási kérdések.}
+\begin{enumerate}[label=K\arabic*.]
+  \item Felépíthető-e kizárólag nyilvános menetrendi adatokból olyan
+    utasáramlási modell, amely valószínűség-elméletileg következetes, és a
+    teljes budapesti hálózaton egzaktul megoldható?
+  \item Mely csomópontok kiesése rontja leginkább a hálózat teljesítményét,
+    és ez mennyiben tér el a csomópontok forgalmától?
+  \item Mely új metró- vagy villamosvonalak javítanák a legtöbbet a
+    hálózaton egységnyi építési költségre, és ehhez képest hol helyezkedik el
+    a tervezett M5 metró?
+\end{enumerate}
 
 \paragraph{Hozzájárulások.}
 \begin{enumerate}[label=(\roman*)]
-  \item Vonalszintű nyílt Markov-hálózat a budapesti hálózatra, amelyben az
-    utas a járművön marad, amíg le nem száll; a várakozási ráta a
-    követési idő első két momentumához illeszkedik.
-  \item A viszonylatválasztás levezetése a minimális relatív entrópia elvéből,
-    és annak bizonyítása, hogy a Poisson-ritkítás ezt pontosan megvalósítja.
-  \item Egzakt megoldás: a foglaltságok minden időpontban független
-    Poisson-eloszlásúak, az utazási idő fázistípusú eloszlású.
+  \item Vonalszintű nyílt Markov-hálózat, amelyben a beszállási ráta a
+    követési idő első két momentumához illeszkedik, a viszonylatválasztás
+    pedig a minimális relatív entrópia elvéből következik.
+  \item Egzakt megoldás: a foglaltságok független Poisson-eloszlásúak, az
+    utazási idő fázistípusú eloszlású.
   \item Igényekkel súlyozott, várható időkön alapuló sérülékenységi mutató,
     amely elkülöníti egy csomópont bezárásának közvetlen és hálózati hatását.
-  \item Nyílt, reprodukálható Python-megvalósítás, amely a dolgozat minden számát
-    egyetlen futtatással előállítja.
+  \item Egy új vonal hatásának pontos, min-plusz alakú kiszámítása, amely
+    lehetővé teszi több ezer jelölt vonal kiértékelését és mohó kiválasztását.
+  \item Nyílt, reprodukálható Python-megvalósítás, amely a dolgozat minden
+    számát, ábráját és táblázatát előállítja.
 \end{enumerate}
 
-A dolgozat felépítése: a \ref{sec:irodalom}.~fejezet a kapcsolódó irodalmat
-tekinti át, a \ref{sec:adat}.~fejezet az adatokat és a hálózat felépítését,
-a \ref{sec:modell}.~fejezet a modellt, a \ref{sec:megoldas}.~fejezet az egzakt
-megoldást, a \ref{sec:serules}.~fejezet a sérülékenységi mutatót ismerteti. Az
-eredményeket a \ref{sec:eredmeny}., a korlátokat a \ref{sec:korlat}.~fejezet
-tárgyalja.
+A dolgozat felépítése a következő. A \ref{sec:irodalom}.~fejezet a kapcsolódó
+irodalmat, a \ref{sec:adat}.~fejezet az adatokat és a hálózatot, a
+\ref{sec:modell}.~fejezet a modellt, a \ref{sec:megoldas}.~fejezet az egzakt
+megoldást mutatja be. A \ref{sec:halozat}.~fejezet a sérülékenységi és a
+hálózatfejlesztési módszert ismerteti, a \ref{sec:eredmeny}.~fejezet az
+eredményeket, a \ref{sec:korlat}.~fejezet a korlátokat tárgyalja.
 
 % =============================================================================
 \section{Kapcsolódó irodalom}
@@ -169,70 +177,58 @@ tárgyalja.
 \paragraph{Entrópia és forgalomeloszlás.}
 \citet{wilson1969} a gravitációs forgalomeloszlási modellt az entrópia
 maximalizálásából vezette le: adott átlagos költség mellett a legkevésbé
-\enquote{elkötelezett} eloszlás exponenciálisan bünteti a költséget.
-\citet{snickars1977} ezt a priori súlyokkal általánosította (minimális
-információ, illetve relatív entrópia elve); a dolgozatban ezt az
-általánosítást alkalmazzuk a viszonylatválasztásra, ahol az a~priori súlyt a
-menetrendi gyakoriság adja.
+elkötelezett eloszlás exponenciálisan bünteti a költséget.
+\citet{snickars1977} ezt a~priori súlyokkal általánosította (minimális
+információ, illetve relatív entrópia elve); ezt az általánosítást
+alkalmazzuk a viszonylatválasztásra, ahol az a~priori súlyt a menetrendi
+gyakoriság adja.
 
-\paragraph{Gyakoriságalapú ráterhelés.}
-A közös vonalak problémájában \citep{chriqui1975} az utas a vonzó viszonylatok
-közül az elsőként érkező járműre száll fel, így az egyes vonalak választási
-valószínűsége a gyakoriságukkal arányos. \citet{spiess1989} optimális
-stratégiákra épülő ráterhelési modellje ma is a menetrendalapú tervezés
-alapja. Modellünk beszállási mechanizmusa ennek valószínűségi, folytonos idejű
-megfelelője.
-
-\paragraph{Várakozási idő.}
-Véletlenszerűen érkező utas esetén a várakozás a követési idő maradék
-élettartama, amelynek várható értéke a követési idő négyzetes relatív
-szórásától függ (\enquote{inspection paradox}, \citealp{larson1981}). Ebből
-következik, hogy a gyakorisággal egyenlő rátájú exponenciális várakozás
-szabályos menetrendnél kétszeresére becsüli a várakozást, amit a
-\ref{sec:modell}.~fejezetben momentumillesztéssel korrigálunk.
+\paragraph{Gyakoriságalapú ráterhelés és várakozási idő.}
+A közös vonalak problémájában \citep{chriqui1975} az utas a vonzó
+viszonylatok közül az elsőként érkező járműre száll fel, így a vonalak
+választási valószínűsége a gyakoriságukkal arányos. \citet{spiess1989}
+optimális stratégiákra épülő ráterhelési modellje ma is a menetrendalapú
+tervezés alapja. Véletlenszerűen érkező utas esetén a várakozás a követési
+idő maradék élettartama, amelynek várható értéke a követési idő négyzetes
+relatív szórásától függ \citep{larson1981}.
 
 \paragraph{Markov-hálózatok és fázistípusú eloszlások.}
 \citet{jackson1957} nyílt sorbanállási hálózatai óta ismert, hogy Markov-típusú
 útvonalválasztás mellett a stacionárius eloszlás szorzat alakú. Végtelen sok
 kiszolgálós csomópontok és Poisson-beáramlás esetén a foglaltságok független
 Poisson-eloszlásúak, ami a Poisson-folyamatok jelöléstételéből következik
-\citep{kingman1993}. Az elnyelődésig eltelt idő fázistípusú eloszlású
-\citep{neuts1981}. Kémiai reakcióhálózatokban \citet{jahnke2007} megmutatta,
-hogy elsőrendű reakciók esetén a mesteregyenlet megoldása Poisson- és
-multinomiális eloszlások konvolúciója. Emiatt a \citet{gillespie1977}-féle
-pontos szimulációra ilyen rendszerekben csak ellenőrzésként van szükség.
+\citep{kingman1993}; az elnyelődésig eltelt idő fázistípusú eloszlású
+\citep{neuts1981}. Elsőrendű reakcióhálózatokra \citet{jahnke2007} megmutatta,
+hogy a mesteregyenlet megoldása Poisson- és multinomiális eloszlások
+konvolúciója, így a \citet{gillespie1977}-féle pontos szimulációra ilyen
+rendszerekben csak ellenőrzésként van szükség.
 
-\paragraph{Hálózati sérülékenység.}
+\paragraph{Sérülékenység és hálózattervezés.}
 \citet{latora2001} hatékonysági mutatója a csúcspárok közötti legrövidebb
-utak reciprokának átlaga, amely széteső gráfra is értelmezett.
-Közösségi közlekedési hálózatokra \citet{cats2014} dinamikus, utasforgalommal
-súlyozott sérülékenységi elemzést javasolt. Mi a hatékonyságot igényekkel
-súlyozzuk, a legrövidebb utakat pedig várható várakozási és menetidőkből
-számoljuk.
+utak reciprokának átlaga, amely széteső gráfra is értelmezett; közösségi
+közlekedésre \citet{cats2014} adott utasforgalommal súlyozott sérülékenységi
+elemzést. A közösségi közlekedési hálózatok tervezésének szakirodalmát
+\citet{guihaire2008} és \citet{farahani2013} tekinti át; a feladat általában
+NP-nehéz, ezért heurisztikák terjedtek el. A mohó algoritmus monoton
+szubmoduláris célfüggvényre bizonyítottan jó közelítést ad
+\citep{nemhauser1978}, költségkorláttal pedig a haszon/költség arány szerinti
+változata \citep{khuller1999}.
 
 % =============================================================================
 \section{Adatok és hálózat}
 \label{sec:adat}
 
-\subsection{A rögzített menetrend}
+\subsection{Menetrend és szolgáltatási nap}
 
 A BKK GTFS-adatait a MobilityData hivatalos tükréről töltöttük le; a
-változat azonosítója \texttt{\FEEDVER}, érvényessége 2026.~június~2.
-és július~4. közötti. Szolgáltatási napnak a 2026.~június~9-i keddet
-választottuk (tanítási nap, ünnepnap nélkül), az elemzési ablak a
-07:00--09:00 közötti reggeli csúcs. Az aznap közlekedő \NTRIPS{} menet hat
-közlekedési módot fed le.
-
-\paragraph{Két adatkezelési buktató.}
-(1)~A menetrend nem tartalmaz \texttt{calendar.txt} fájlt; a szolgáltatási
-napokat kizárólag a \texttt{calendar\_dates.txt} kivételei határozzák meg. Ha
-a szűrés a hét napja szerint történik (\enquote{minden kedd}), az eredmény a
-menetrendi időszak összes keddjének szolgáltatásait egyesíti: \NUNION{}
-menetet a június~9-i \NTRIPS{} helyett, ami minden gyakoriságot
-\INFL-szeresére növelne. Ezért egyetlen konkrét dátumra szűrünk. (2)~A
-jelenlegi menetrend a trolibuszt a szabványos $11$-es, a HÉV-et a kiterjesztett
-$109$-es \texttt{route\_type} kóddal jelöli; a régebbi menetrendekben
-használt $800$-as és $2$-es kódokra épülő szűrés mindkét módot elveszítené.
+változat azonosítója \texttt{\FEEDVER}, érvényessége 2026.~június~2. és
+július~4. közötti. A menetrend a szolgáltatási napokat a
+\texttt{calendar\_dates.txt} kivételeivel adja meg, ezért a forgalmi napot
+egyetlen konkrét dátumra, a 2026.~június~9-i keddre (tanítási nap, ünnepnap
+nélkül) határozzuk meg. Az elemzési ablak a 07:00--09:00 közötti reggeli
+csúcs. Aznap \NTRIPS{} menet közlekedik hat közlekedési módon: busz
+(\texttt{route\_type}~3), villamos (0), trolibusz (11), metró (1), HÉV (109)
+és hajó (4).
 
 \subsection{Csomópontok és vonalszakaszok}
 
@@ -240,44 +236,41 @@ használt $800$-as és $2$-es kódokra épülő szűrés mindkét módot elvesz�
 A peronokat először a \texttt{parent\_station} mező szerinti állomásukhoz
 rendeljük. Két állomás egy \emph{csomópontba} tartozik, ha nevük az
 \enquote{M}, \enquote{H}, \enquote{M+H} átszállási utótagok elhagyása után
-megegyezik, és legfeljebb $400$~m-re vannak egymástól (egyszerű láncszerkesztés,
-\emph{single linkage}). A csomópontok halmazát $\Hs$ jelöli.
+megegyezik, és legfeljebb $400$~m-re vannak egymástól (egyszerű
+láncszerkesztés). A csomópontok halmazát $\Hs$ jelöli.
 \end{definicio}
 
-Így kerül egy csomópontba például a Deák Ferenc téri metróállomás és a felszíni
-\enquote{Deák Ferenc tér M} buszmegálló, ami nélkül a módok közötti átszállás
-nem modellezhető.
+Így kerül egy csomópontba például a Deák Ferenc téri metróállomás és a
+felszíni \enquote{Deák Ferenc tér M} buszmegálló, vagyis a csomópont a módok
+közötti átszállás helye.
 
 \begin{definicio}[Vonalszakasz]
 Az $s=(\ell,i,j)$ vonalszakasz az $\ell$ viszonylat egymást követő $i$ és $j$
 megállója, ha az ablakban legalább egy menet $i$-ből indul $j$ felé. Jellemzői:
-az ablakbeli indulások száma $n_s$, a gyakoriság $f_s=n_s/W$ ($W=7200$~s),
-az indulások közötti követési idők négyzetes relatív szórása $\mathrm{CV}^2_s$
-(három indulás alatt $1$), a menetidő mediánja $\tau_s$ (alsó korlát $20$~s) és
-a légvonalbeli hossz $d_s$. A szakaszok halmaza $\Ss$.
+az ablakbeli indulások száma $n_s$, a gyakoriság $f_s=n_s/W$ ($W=7200$~s), az
+indulások közötti követési idők négyzetes relatív szórása $\mathrm{CV}^2_s$
+(három indulás alatt $1$), a menetidő mediánja $\tau_s$ (alsó korlát $20$~s)
+és a légvonalbeli hossz $d_s$. A szakaszok halmaza $\Ss$.
 \end{definicio}
 
 Az $s$ szakasz után következő $s'=(\ell,j,k)$ szakasz \emph{folytatási aránya}
-$r_{ss'}$ az $i\to j\to k$ útvonalon haladó menetek és az $i\to j$ menetek
-számának hányadosa; $r_{s,\mathrm{vég}}=1-\sum_{s'}r_{ss'}$ a $j$-ben
-végállomáshoz érő menetek aránya. A hálózat \NHUBS{} csomópontból és
-\NSEGS{} vonalszakaszból áll. A követési idők a gyakorlatban szabályosak:
-a $\mathrm{CV}^2$ mediánja \MEDCVSQ{}, és a szakaszok \SHARECVLOW{}\%-án
-$0{,}1$ alatti.
+$r_{ss'}$ az $i\to j\to k$ útvonalon haladó és az $i\to j$ menetek számának
+hányadosa; $r_{s,\mathrm{vég}}=1-\sum_{s'}r_{ss'}$ a $j$-ben végállomáshoz
+érő menetek aránya. A hálózat \NHUBS{} csomópontból és \NSEGS{}
+vonalszakaszból áll; az ablakban \NTRIPSEG{} menet--szakasz indulás történik.
+A követési idők szabályosak: a $\mathrm{CV}^2$ mediánja \MEDCVSQ, és a
+szakaszok \SHARECVLOW{}\%-án $0{,}1$ alatti.
 
 % =============================================================================
-\section{A vonalszintű nyílt Markov-hálózat}
+\section{A modell}
 \label{sec:modell}
 
 \subsection{Állapottér és átmenetek}
 
-Ha az utas állapota csak a megálló volna, a lánc minden megállóközi lépés után
-újra várakozásba kényszerítené: egy tízmegállós út tíz független várakozásból
-állna, és a menetidő sem jelenne meg a dinamikában. Ezért az állapotteret a
-járművön töltött szakaszokkal bővítjük. Az utas állapota a $\Xs=\Hs\cup\Ss$ halmazban van: vagy egy $h\in\Hs$
-csomópontban vár, vagy egy $s\in\Ss$ vonalszakaszon utazik. A rendszeren
-kívüli állapotot $\dagger$ jelöli; a folytonos idejű láncok alapfogalmait
-\citet{norris1997} alapján használjuk. Az átmenetek (rátái s$^{-1}$-ben):
+Az utas állapota a $\Xs=\Hs\cup\Ss$ halmazban van: vagy egy $h\in\Hs$
+csomópontban vár, vagy egy $s\in\Ss$ vonalszakaszon utazik; a rendszeren
+kívüli állapotot $\dagger$ jelöli. A folytonos idejű láncok alapfogalmait
+\citet{norris1997} alapján használjuk. Az átmenetek rátái (s$^{-1}$):
 \begin{align}
   h\;\to\;s &: \quad q_s=\theta_s\,a_s, && s \text{ a } h \text{ csomópontból indul},
   \label{eq:board}\\
@@ -292,18 +285,20 @@ kívüli állapotot $\dagger$ jelöli; a folytonos idejű láncok alapfogalmait
 Itt $\theta_s$ a beszállási ráta, $a_s\in(0,1]$ az elfogadási valószínűség,
 $\alpha_s$ a leszállás valószínűsége a $j$ megállóban, $\beta_s$ a teljes
 leszállási valószínűség (a végállomáson mindenki leszáll), $p_{\mathrm{tr}}$
-pedig annak valószínűsége, hogy a leszálló utas átszáll. A $T$ generátor
-$\Xs$-en vett része \emph{részgenerátor}: nemnegatív off-diagonális elemekkel,
-$T\one+\bm t=\bm 0$, ahol $\bm t\ge 0$ a kilépési ráták vektora.
+pedig annak valószínűsége, hogy a leszálló utas átszáll. Az utas tehát a
+járművön marad, amíg le nem száll, és a menetidő a tartózkodási időben
+jelenik meg. A $T$ generátor $\Xs$-en vett része \emph{részgenerátor}:
+off-diagonális elemei nemnegatívak, és $T\one+\bm t=\bm 0$, ahol
+$\bm t\ge0$ a kilépési ráták vektora.
 
-\subsection{A beszállási ráta: momentumillesztés}
+\subsection{A beszállási ráta}
 
 \begin{lemma}[Várakozási idő, \citealp{larson1981}]
 \label{lem:varakozas}
 Legyen az $s$ szakasz járműveinek indulási folyamata stacionárius
-megújulási folyamat, $H$ követési idővel, $\E[H]=1/f_s$ és
-$\E[H^2]<\infty$. Ha az utas érkezési időpontja független az indulásoktól,
-akkor a várakozási idő várható értéke
+megújulási folyamat $H$ követési idővel, $\E[H]=1/f_s$ és $\E[H^2]<\infty$.
+Ha az utas érkezési időpontja független az indulásoktól, akkor a várakozási
+idő várható értéke
 \[
   \E[W]=\frac{\E[H^2]}{2\E[H]}=\frac{1+\mathrm{CV}_s^2}{2f_s}.
 \]
@@ -311,32 +306,28 @@ akkor a várakozási idő várható értéke
 
 \begin{proof}
 A véletlen időpontot tartalmazó követési intervallum hossza a hosszal
-súlyozott (méretbeli torzítású) eloszlást követi, sűrűsége
-$x\,F_H(\mathrm dx)/\E[H]$. Ezen belül az érkezés egyenletes, így
-$\E[W\mid \text{hossz}=x]=x/2$. Ebből
-$\E[W]=\int\frac{x}{2}\frac{x\,F_H(\mathrm dx)}{\E[H]}=\E[H^2]/(2\E[H])$,
-és $\E[H^2]=\E[H]^2(1+\mathrm{CV}^2)$.
+súlyozott eloszlást követi, sűrűsége $x\,F_H(\mathrm dx)/\E[H]$. Ezen belül
+az érkezés egyenletes, így $\E[W\mid\text{hossz}=x]=x/2$, ahonnan
+$\E[W]=\int\frac{x}{2}\frac{x\,F_H(\mathrm dx)}{\E[H]}=\E[H^2]/(2\E[H])$, és
+$\E[H^2]=\E[H]^2(1+\mathrm{CV}^2)$.
 \end{proof}
 
-A Markov-modell exponenciális várakozást ír elő. A ráta értékét úgy választjuk
-meg, hogy a várható várakozás megegyezzen a lemma szerintivel:
+A modellben a várakozás exponenciális, rátáját a várható várakozás
+egyezése határozza meg:
 \begin{equation}
   \theta_s=\frac{2f_s}{1+\mathrm{CV}^2_s}.
   \label{eq:theta}
 \end{equation}
-Exponenciális követési időnél ($\mathrm{CV}^2=1$) $\theta_s=f_s$; ütemes
-menetrendnél viszont $\theta_s=2f_s$. A kézenfekvő $\theta_s=f_s$ választás
-tehát szabályos menetrend mellett kétszeresére becsülné a várakozást.
+Ütemes menetrendnél ($\mathrm{CV}^2=0$) $\theta_s=2f_s$, exponenciális
+követési időknél ($\mathrm{CV}^2=1$) $\theta_s=f_s$.
 
 \subsection{Viszonylatválasztás: minimális relatív entrópia}
 
 A $h$ csomópontból induló szakaszok halmaza $\Ss_h$. Ha az utas minden
-érkező járműre felszáll, versengő Poisson-folyamatok miatt az első jármű az $s$
-szakaszé $\omega_s=\theta_s/\sum_{u\in\Ss_h}\theta_u$ valószínűséggel. Ez a
-közös vonalak problémájának klasszikus gyakorisági megoldása
-\citep{chriqui1975,spiess1989}. A preferenciákat a $c_s$ észlelt költséggel írjuk
-le, amelyet egy kilométerre vetítünk, hogy a hosszabb szakasz ne tűnjön pusztán
-a hossza miatt költségesebbnek:
+érkező járműre felszáll, versengő Poisson-folyamatok miatt az első jármű az
+$s$ szakaszé $\omega_s=\theta_s/\sum_{u\in\Ss_h}\theta_u$ valószínűséggel; ez
+a közös vonalak problémájának gyakorisági megoldása \citep{chriqui1975}. A
+preferenciákat a kilométerre vetített észlelt költséggel írjuk le:
 \begin{equation}
   c_s=\kappa^{v(s)}\cdot 1000\cdot\frac{\tau_s}{d_s}\quad[\mathrm{s}/\mathrm{km}],
 \end{equation}
@@ -346,13 +337,13 @@ villamos $0{,}70$, trolibusz $0{,}85$, busz $1{,}00$, hajó $1{,}20$).
 \begin{allitas}[Minimális relatív entrópia]
 \label{all:minent}
 Az $\Ss_h$-n értelmezett $p$ eloszlások közül, amelyekre
-$\sum_s p_sc_s=\bar c$ (ahol $\min_s c_s<\bar c<\sum_s\omega_sc_s$), a
-$D(p\,\|\,\omega)=\sum_sp_s\ln(p_s/\omega_s)$ relatív entrópiát az
+$\sum_sp_sc_s=\bar c$ (ahol $\min_sc_s<\bar c<\sum_s\omega_sc_s$), a
+$D(p\,\|\,\omega)=\sum_sp_s\ln(p_s/\omega_s)$ relatív entrópiát egyértelműen az
 \[
-  p_s=\frac{\omega_s e^{-\lambda c_s}}{\sum_u\omega_ue^{-\lambda c_u}}
+  p_s=\frac{\omega_se^{-\lambda c_s}}{\sum_u\omega_ue^{-\lambda c_u}}
      =\frac{\theta_se^{-\lambda c_s}}{\sum_u\theta_ue^{-\lambda c_u}}
 \]
-eloszlás minimalizálja, egyértelműen, alkalmas $\lambda>0$ mellett.
+eloszlás minimalizálja, alkalmas $\lambda>0$ mellett.
 \end{allitas}
 
 \begin{proof}
@@ -361,16 +352,15 @@ $\mathcal L=\sum_sp_s\ln(p_s/\omega_s)+\lambda(\sum_sp_sc_s-\bar c)+\eta(\sum_sp
 a stacionaritási feltétel $\ln(p_s/\omega_s)+1+\lambda c_s+\eta=0$, ami a
 fenti alakot adja. $D(\cdot\|\omega)$ szigorúan konvex, a feltételek
 lineárisak, így a minimum egyértelmű. A $\lambda\mapsto\sum_sp_s(\lambda)c_s$
-leképezés szigorúan csökkenő (deriváltja $-\Var_p(c)<0$), $\omega$-nál indul
-és $\min_sc_s$-hez tart, ezért minden megengedett $\bar c$-hez pontosan egy
-$\lambda$ tartozik.
+leképezés szigorúan csökkenő (deriváltja $-\Var_p(c)<0$), $\lambda=0$-ban
+$\sum_s\omega_sc_s$, $\lambda\to\infty$ esetén $\min_sc_s$, ezért minden
+megengedett $\bar c$-hez pontosan egy $\lambda$ tartozik.
 \end{proof}
 
-Ez Wilson entrópiaelvének \citep{wilson1969} a priori súlyokkal
-általánosított alakja \citep{snickars1977}. A Wilson-modellel ellentétben
-itt nem célállomást, hanem járművet (vonalszakaszt) választ az utas, és a
-választás a várakozással együtt, egyetlen mechanizmusból következik
-(\ref{tet:ritkitas}.~tétel).
+Ez Wilson entrópiaelvének \citep{wilson1969} a~priori súlyokkal
+általánosított alakja \citep{snickars1977}, azzal a különbséggel, hogy az utas
+itt járművet (vonalszakaszt) választ. A választás és a várakozás egyetlen
+mechanizmusból következik:
 
 \begin{tetel}[Ritkítás]
 \label{tet:ritkitas}
@@ -381,60 +371,48 @@ függetlenül
   a_s=\exp\Bigl(-\lambda\bigl(c_s-\min_{u\in\Ss_h}c_u\bigr)\Bigr)
 \]
 valószínűséggel szálljon fel. Ekkor a felszállásig eltelt idő
-$\mathrm{Exp}\bigl(\sum_s\theta_sa_s\bigr)$ eloszlású, és a felszállás az
-$s$ szakaszra pontosan a \ref{all:minent}.~állítás szerinti $p_s$
+$\mathrm{Exp}\bigl(\sum_s\theta_sa_s\bigr)$ eloszlású, és a felszállás az $s$
+szakaszra pontosan a \ref{all:minent}.~állítás szerinti $p_s$
 valószínűséggel történik.
 \end{tetel}
 
 \begin{proof}
 A Poisson-folyamat független ritkítása $\theta_sa_s$ rátájú Poisson-folyamatot
-ad, és a különböző szakaszok ritkított folyamatai függetlenek maradnak
-\citep{kingman1993}. A felszállás e folyamatok első eseménye: független
-exponenciálisok minimuma $\mathrm{Exp}(\sum_s\theta_sa_s)$, és az $s$ index
-valószínűsége $\theta_sa_s/\sum_u\theta_ua_u=p_s$, mert a $\min_uc_u$
-eltolás kiesik.
+ad, és a ritkított folyamatok függetlenek maradnak \citep{kingman1993}. A
+felszállás ezek első eseménye: független exponenciálisok minimuma
+$\mathrm{Exp}(\sum_s\theta_sa_s)$, és az $s$ index valószínűsége
+$\theta_sa_s/\sum_u\theta_ua_u=p_s$, mert a $\min_uc_u$ eltolás kiesik.
 \end{proof}
 
-A $\lambda=0$ határesetben $a_s\equiv1$, és visszakapjuk a gyakorisági
-megosztást. Nagy $\lambda$ mellett az utas a legkisebb észlelt költségű
-szakaszra vár, ezért a várakozás hosszabb. Ha a választást a várakozástól
-függetlenül írnánk elő (pl.\ $q_s=f_h\,p_s$ az összes jármű $f_h$ együttes
-gyakoriságával), a választott irányra várakozó utas a nem választott
-járművekkel is elindulhatna, ami következetlen.
+$\lambda=0$ esetén $a_s\equiv1$, és a választás a gyakorisági megosztás;
+nagy $\lambda$ mellett az utas a legkisebb észlelt költségű szakaszra vár,
+ezért többet vár. A választásnak a kereszteződésekben és átszállási pontokon,
+vagyis ott van szerepe, ahol egy csomópontból több szakasz indul. Mivel a
+csomópont a környező megállókat és peronokat is magában foglalja, ez a
+hálózatban általános: a \CHACTIVE{} aktív csomópontból \CHMULTI{}-ból
+legalább két szakasz indul, és ezek adják a felszállások \CHMULTIB\%-át.
+Legalább két viszonylat a felszállások \CHLINEB\%-ánál, legalább két
+közlekedési mód \CHMODE{} csomópontban, a felszállások \CHMODEB\%-ánál
+választható. A Deák Ferenc téren például a metróra szállók aránya
+$\lambda=0$ mellett \DEAKZERO\%, az alapesetben \DEAKBASE\%.
 
-\paragraph{Hol hat a választás?}
-A választásnak ott van szerepe, ahol egy csomópontból több vonalszakasz
-indul, vagyis a kereszteződésekben és átszállási pontokon. Mivel egy csomópont
-a környező megállókat és peronokat is magában foglalja, ez a hálózatban
-általános: a \CHACTIVE{} aktív csomópontból \CHMULTI{}-ból legalább két
-szakasz indul, és ezek adják a felszállások \CHMULTIB\%-át. Legalább két
-viszonylat a felszállások \CHLINEB\%-ánál, legalább két közlekedési mód
-\CHMODE{} csomópontban, a felszállások \CHMODEB\%-ánál választható. A
-$\lambda$ paraméter tehát érdemben befolyásolja az áramlásokat: a Deák Ferenc
-téren a metróra szállók aránya $\lambda=0$ mellett \DEAKZERO\%, az
-alapesetben \DEAKBASE\%.
+\subsection{Leszállás, átszállás és paraméterek}
 
-\subsection{Leszállás és átszállás}
+A leszállást a megtett távolság szerinti, $1/D$ intenzitású
+Poisson-folyamatnak tekintjük, ezért $\alpha_s=1-e^{-d_s/D}$, és egy út hossza
+(végállomás nélkül) $D$ várható értékű exponenciális. Leszállás után az utas
+$p_{\mathrm{tr}}$ valószínűséggel átszáll, azaz a csomópontban marad; ha a
+csomópontból az ablakban semmi sem indul, kilép. A munkanapi felszállások
+számát a BKK mobilitási jelentése adja meg \citep{bkk2024}. A 07--09 közötti
+hányad $\phi=0{,}20$ (feltevés); a menetrendi indulásoknak \SUPPLYSHARE\%-a
+esik ebbe az ablakba, és mivel az igény csúcsa élesebb a kínálaténál, ez
+alsó becslésnek tekinthető. A modell lineáris, ezért $\phi$ bármely más értéke
+minden áramlást és állományt ugyanazzal a szorzóval skáláz.
 
-A leszállást a megtett távolság szerinti, $1/D$ intenzitású Poisson-folyamatnak
-tekintjük, ezért $\alpha_s=1-e^{-d_s/D}$, és egy út hossza (végállomás nélkül)
-$D$ várható értékű exponenciális. Leszállás után az utas $p_{\mathrm{tr}}$
-valószínűséggel átszáll, azaz a csomópontban marad; ha a csomópontból az
-ablakban semmi sem indul, a modell kilépteti. A paramétereket az
-\ref{tab:param}.~táblázat foglalja össze. A munkanapi felszállások számát a
-BKK mobilitási jelentése adja meg \citep{bkk2024}. A 07--09 közötti hányadra
-hálózati szintű közzétett adatot nem találtunk; $\phi=0{,}20$ feltevés. A
-menetrendi indulásoknak \SUPPLYSHARE\%-a esik ebbe az ablakba, és mivel az
-igény csúcsa élesebb a kínálaténál (a menetrend csúcson kívül is minimális
-követést tart), ez alsó becslésnek tekinthető. A modell lineáris, ezért
-$\phi$ bármely más értéke minden áramlást és állományt ugyanazzal a
-szorzóval skáláz.
-
-\begin{table}[H]
+\begin{table}[!htbp]
 \centering
-\caption{A modell feltevései. A lineáris szerkezet miatt minden áramlás és
-állomány arányos a $N_{\mathrm{nap}}\phi$ szorzattal; a térbeli mintázatot
-csak a középső blokk paraméterei befolyásolják.}
+\caption{A modell paraméterei. Az első blokk csak a skálát határozza meg, a
+térbeli mintázatot a második blokk paraméterei befolyásolják.}
 \label{tab:param}
 \small
 \begin{tabular}{llr}
@@ -442,7 +420,7 @@ csak a középső blokk paraméterei befolyásolják.}
 Jelölés & Jelentés & Érték \\
 \midrule
 $N_{\mathrm{nap}}$ & munkanapi felszállások \citep{bkk2024} & $3{,}4\cdot10^6$ \\
-$\phi$ & a felszállások 07--09 közötti hányada (feltevés) & $0{,}20$ \\
+$\phi$ & a felszállások 07--09 közötti hányada & $0{,}20$ \\
 \midrule
 $\lambda$ & költségérzékenység & $1/300$~s$^{-1}$ \\
 $D$ & egy út átlagos hossza & $3{,}5$~km \\
@@ -458,8 +436,8 @@ $\lambda_h$ & kiinduló utazások rátája & $\propto f_h=\sum_{s\in\Ss_h}f_s$ \
 
 A kiinduló utazások a $h$ csomópontokban független, $\lambda_h$ rátájú
 Poisson-folyamatok szerint keletkeznek, $\Lambda=\sum_h\lambda_h$; a
-$\bm\lambda$ vektor a $\Xs$-en értelmezett, a szakaszokon nulla. Minden utas
-egymástól függetlenül a $T$ részgenerátorú lánc szerint mozog.
+$\bm\lambda$ vektor a szakaszokon nulla. Minden utas egymástól függetlenül a
+$T$ részgenerátorú lánc szerint mozog.
 
 \begin{lemma}
 \label{lem:mmatrix}
@@ -474,16 +452,16 @@ jellemzése \citep{berman1994}. A sajátértékekre vonatkozó állítás az
 M-mátrixok spektrális tulajdonsága.
 \end{proof}
 
-Modellünkben a feltétel teljesül: minden szakaszon $\beta_s\ge\alpha_s>0$ és
-$p_{\mathrm{tr}}<1$, minden aktív csomópontból indul szakasz, az inaktív
-csomópontokra pedig nincs beáramlás.
+A feltétel a modellben teljesül: minden szakaszon $\beta_s\ge\alpha_s>0$ és
+$p_{\mathrm{tr}}<1$, minden aktív csomópontból indul szakasz, és az inaktív
+csomópontokba nincs beáramlás.
 
 \begin{tetel}[Poisson-foglaltság]
 \label{tet:poisson}
 Legyen a rendszer a $t=0$ időpontban üres, és jelölje $N_x(t)$ az
 $x\in\Xs$ állapotban lévő utasok számát. Ekkor minden $t\ge0$ esetén az
-$\{N_x(t)\}_{x\in\Xs}$ változók \emph{független} Poisson-eloszlásúak, és
-várható értékük
+$\{N_x(t)\}_{x\in\Xs}$ változók független Poisson-eloszlásúak, várható
+értékük
 \begin{equation}
   \bm m(t)=\int_0^t\bm\lambda\,e^{T(t-u)}\,\mathrm du
   =\bm\lambda(-T)^{-1}\bigl(I-e^{Tt}\bigr).
@@ -495,68 +473,54 @@ $\bm m(t)\to\bm L=\bm\lambda(-T)^{-1}$.
 \end{tetel}
 
 \begin{proof}
-A $h$ csomópontba $u$ időpontban érkező utas a többitől függetlenül
+A $h$ csomópontba az $u$ időpontban érkező utas a többitől függetlenül
 $\bigl[e^{T(t-u)}\bigr]_{hx}$ valószínűséggel van a $t$ időpontban az $x$
 állapotban. A beérkezések együttese tér--idő Poisson-folyamat, és az
-állapot szerinti független megjelölés (színezés) a Poisson-folyamatok
-jelöléstétele szerint független Poisson-folyamatokat ad az egyes $x$
-állapotokra \citep{kingman1993}. Ezek $t$-beli számlálója Poisson-eloszlású,
-várható értéke $\int_0^t\sum_h\lambda_h[e^{T(t-u)}]_{hx}\mathrm du$, ami
-\eqref{eq:mt}. Az integrált a \ref{lem:mmatrix}.~lemma szerint invertálható
-$T$-vel számoltuk ki; a határérték szintén a lemmából következik, mert
-$e^{Tt}\to0$.
+állapot szerinti független megjelölés a jelöléstétel szerint független
+Poisson-folyamatokat ad az egyes állapotokra \citep{kingman1993}. Ezek
+$t$-beli számlálója Poisson-eloszlású, várható értéke
+$\int_0^t\sum_h\lambda_h[e^{T(t-u)}]_{hx}\mathrm du$, ami \eqref{eq:mt}. Az
+integrál és a határérték a \ref{lem:mmatrix}.~lemmából következik.
 \end{proof}
 
 \begin{megjegyzes}
-A tétel két következménye fontos. (a) A várható érték egyenlete
-\emph{nem} középtér-közelítés: kis utasszámnál is pontos, a szórás pedig
-$\sqrt{m_x(t)}$, a relatív szórás $m_x^{-1/2}$. (b) Rögzített kezdeti
-állománynál ($N(0)=\bm n$) a foglaltság független multinomiálisok összege
-\citep{jahnke2007}. A Gillespie-féle szimuláció ezért ebben a modellben
-fölösleges, csak az implementáció ellenőrzésére használjuk.
+A várható érték egyenlete tetszőleges utasszámra pontos, a szórás
+$\sqrt{m_x(t)}$, a relatív szórás $m_x^{-1/2}$. Rögzített kezdeti
+állománynál a foglaltság független multinomiálisok összege
+\citep{jahnke2007}. A teljes eloszlás tehát zárt alakban ismert.
 \end{megjegyzes}
 
 \begin{kovetkezmeny}[Little-törvény és fázistípusú utazási idő]
 \label{kov:little}
-Egy véletlenszerűen kiválasztott utazás $\tau$ időtartama fázistípusú,
+Egy véletlenszerűen kiválasztott utazás $\tau$ időtartama
 $\mathrm{PH}(\bm\alpha,T)$ eloszlású, ahol $\bm\alpha=\bm\lambda/\Lambda$, és
 $\E[\tau]=\bm\alpha(-T)^{-1}\one$ \citep{neuts1981}. Ebből
-\[
-  \sum_{x\in\Xs}L_x=\Lambda\,\E[\tau],
-\]
-és ugyanez az egyenlőség bármely állapothalmazra is fennáll az ott töltött
-idővel. Az $s$ szakaszra belépő utasok áramlása $L_s/\tau_s$, a $h$
-csomópontban felszállóké $L_h\sum_{s\in\Ss_h}q_s$.
+$\sum_xL_x=\Lambda\,\E[\tau]$, és ugyanez bármely állapothalmazra is
+fennáll az ott töltött idővel. Az $s$ szakaszra belépő utasok áramlása
+$L_s/\tau_s$, a $h$ csomópontban felszállóké $L_h\sum_{s\in\Ss_h}q_s$.
 \end{kovetkezmeny}
 
-\begin{megjegyzes}[Állomány és áramlás]
-A felszállások száma (áramlás, utas/óra) és az egy időpontban a hálózatban
-tartózkodó utasok száma (állomány) Little törvényén keresztül kapcsolódik:
-$\sum_xL_x=\Lambda\,\E[\tau]$. Egy kezdeti állapotot tehát nem lehet
-közvetlenül a csúcsidei felszállások számához rögzíteni; a modellben az
-állomány a beáramlásból és a tartózkodási időkből adódik.
-\end{megjegyzes}
-
-A stacionárius $\bm L$ egyetlen ritka lineáris egyenletrendszer megoldása
-($(-T)^\top\bm L^\top=\bm\lambda^\top$), a tranziens pedig a Krylov-alapú
-$\bm L\,e^{Tt}$ szorzatból adódik. Mivel $\bm L$ lineáris $\bm\lambda$-ban,
-a $\lambda_h$ ráták skáláját utólag úgy rögzítjük, hogy az összes felszállás
-az ablakban $N_{\mathrm{nap}}\phi$ legyen.
+A rendszerben tartózkodó utasok állománya tehát a beáramlásból és a
+tartózkodási időkből adódik. A stacionárius $\bm L$ egyetlen ritka lineáris
+egyenletrendszer ($(-T)^\top\bm L^\top=\bm\lambda^\top$) megoldása, a
+tranziens pedig a Krylov-alapú $\bm L\,e^{Tt}$ szorzatból számolható. Mivel
+$\bm L$ lineáris $\bm\lambda$-ban, a $\lambda_h$ ráták skáláját utólag úgy
+rögzítjük, hogy a felszállások száma az ablakban $N_{\mathrm{nap}}\phi$ legyen.
 
 % =============================================================================
-\section{Sérülékenység}
-\label{sec:serules}
+\section{Sérülékenység és hálózatfejlesztés}
+\label{sec:halozat}
 
-A sérülékenységet egyetlen, időegységben értelmezett mutatóval mérjük.
-Szándékosan kerüljük a több mutatóból min--max normálással összerakott
-pontszámokat, mert ezek a vizsgált jelöltek halmazától függenek, és a
-leggyengébb jelöltnek konstrukció szerint nullát adnak.
+\subsection{Igényekkel súlyozott hatékonyság}
+
+A hálózat teljesítményét egyetlen, időegységben értelmezett mutatóval
+mérjük.
 
 \begin{definicio}[Igényekkel súlyozott hatékonyság]
 Legyen $t_{od}$ a legrövidebb várható utazási idő az $o$ csomópontból a
 $d$-be abban az irányított gráfban, amelynek csúcsai a $\Xs$ állapotai, élei
-pedig: $h\to s$ a $1/\theta_s$ várható várakozással, $s\to s'$ és $s\to h'$ a
-$\tau_s$ menetidővel. A hatékonyság a Latora--Marchiori-féle mutató
+pedig: $h\to s$ a $1/\theta_s$ várható várakozással, $s\to s'$ és $s\to h'$
+a $\tau_s$ menetidővel. A hatékonyság a Latora--Marchiori-féle mutató
 \citep{latora2001} igényekkel súlyozott változata:
 \[
   E=\frac{\sum_{o\ne d}w_ow_d\,t_{od}^{-1}}{\sum_{o\ne d}w_ow_d}
@@ -564,32 +528,94 @@ $\tau_s$ menetidővel. A hatékonyság a Latora--Marchiori-féle mutató
 \]
 \end{definicio}
 
+\subsection{Csomópontok kiesése}
+
 Egy $h$ csomópont kiesésének két változatát vizsgáljuk. \emph{Bezáráskor}
-($h$-ban nem lehet fel- és leszállni, a járművek áthaladnak) a $h$-ba
-befutó és onnan induló várakozási élek esnek ki. \emph{Megszakadáskor} $h$
-és minden érintő szakasz kiesik, így a vonalak kettészakadnak. A relatív
-veszteség $\Delta E/E$; ezt felbontjuk egy közvetlen részre (a $h$-t
-érintő utazások elvesznek) és egy \emph{hálózati} részre, amely a többi
-$o$--$d$ pár hatékonyságának csökkenése, vagyis az átszállási szerep elvesztése.
-A legrövidebb utakat minden aktív csomópontból Dijkstra-algoritmussal,
-pontosan számoljuk.
+($h$-ban nem lehet fel- és leszállni, a járművek áthaladnak) a $h$-ba befutó
+és onnan induló várakozási élek esnek ki. \emph{Megszakadáskor} $h$ és minden
+érintő szakasz kiesik, így a vonalak kettészakadnak. A relatív veszteség
+$\Delta E/E$; ezt felbontjuk egy közvetlen részre (a $h$-t érintő utazások
+elvesznek) és egy \emph{hálózati} részre, amely a többi $o$--$d$ pár
+hatékonyságának csökkenése, vagyis a csomópont átszállási szerepét méri. A
+legrövidebb utakat minden csomópontból Dijkstra-algoritmussal, pontosan
+számoljuk.
+
+\subsection{Új vonalak}
+
+Egy új vonal $a_1,\dots,a_k$ meglévő csomópontokat köt össze adott móddal,
+sebességgel és követési idővel. A vonalon belüli költség az $a$-ban való
+beszállás és a $b$-ig tartó utazás várható ideje:
+\[
+  c_{ab}=\frac{H_{\mathrm{vonal}}}{2}+\sum_{\text{szakaszok } a\to b}\tau ,
+\]
+ahol az első tag \eqref{eq:theta} szerint az ütemes ($\mathrm{CV}^2=0$)
+követés várható várakozása.
+
+\begin{tetel}[Min-plusz frissítés]
+\label{tet:minplus}
+Jelölje $t_{od}$ a meglévő hálózat legrövidebb várható idejeit, és
+$t'_{od}$ ugyanezeket az új vonallal kiegészített hálózatban, azon utak
+körében, amelyek az új vonalat legfeljebb egyszer használják. Ekkor
+\begin{equation}
+  t'_{od}=\min\Bigl(t_{od},\;\min_{a,b}\bigl(t_{oa}+c_{ab}+t_{bd}\bigr)\Bigr).
+  \label{eq:minplus}
+\end{equation}
+\end{tetel}
+
+\begin{proof}
+Egy út vagy nem használja az új vonalat (költsége legalább $t_{od}$, és
+$t_{od}$ elérhető), vagy pontosan egyszer száll fel rá egy $a$
+csomópontban és száll le egy $b$ csomópontban. Az ilyen út három, egymástól
+független részre bomlik: $o\to a$ a meglévő hálózatban, a vonalon
+$a\to b$, majd $b\to d$ a meglévő hálózatban. Nemnegatív élköltségek mellett
+mindhárom rész külön minimalizálható, a legkisebb költségek $t_{oa}$, $c_{ab}$
+és $t_{bd}$.
+\end{proof}
+
+A frissítés egy $k$ állomású vonalra $O(k\,|\Hs|^2)$ művelet, így több ezer
+jelölt vonal pontosan kiértékelhető, és a teljes Dijkstra-számítás csak a
+kiválasztott vonalak ellenőrzésére kell. Több vonal esetén a frissítést
+egymás után alkalmazzuk, ami a vonalak kombinált használatát is megengedi.
+
+\begin{allitas}[Csökkenő hozadék]
+\label{all:szubmod}
+Jelölje $t^{(\ell)}_{od}$ az \eqref{eq:minplus} szerinti időt, ha egyedül az
+$\ell$ vonalat adjuk a hálózathoz, és legyen
+$F(\Ls)=\sum_{o\ne d}w_ow_d\max\bigl(t_{od}^{-1},\max_{\ell\in\Ls}(t^{(\ell)}_{od})^{-1}\bigr)$.
+Ekkor $F$ monoton és szubmoduláris, így a mohó választás legalább a
+$(1-1/e)$-szeresét éri el az optimális $k$ vonalas javulásnak
+\citep{nemhauser1978}.
+\end{allitas}
+
+\begin{proof}
+Minden $o$--$d$ párra a $\Ls\mapsto\max_{\ell\in\Ls\cup\{\emptyset\}}g_\ell$
+függvény (ahol $g_\emptyset=t_{od}^{-1}$) monoton és szubmoduláris: egy új
+elem hozzáadásának haszna $\max(0,g_\ell-\max_{\Ls}g)$, ami nagyobb $\Ls$-re
+nem nő. Nemnegatív súlyú összegük szintén ilyen.
+\end{proof}
+
+$F$ alsó korlátja a tényleges javulásnak, mert nem számol a vonalak
+kombinált használatával. A tényleges javulásra a mohó algoritmus a
+\enquote{lusta} változatban fut: a jelöltek határhasznát csak akkor számoljuk
+újra, amikor a sor elejére kerülnek. A vonalakat a javulás és az építési
+költség aránya szerint választjuk, ami a költségkorlátos változat
+szokásos heurisztikája \citep{khuller1999}.
+
+\paragraph{Jelölt vonalak.}
+A végpontok a \NEND{} legnagyobb kiinduló igényű budapesti csomópont párjai.
+A két végpont közötti egyenes folyosóban az állomásokat igény szerinti
+sorrendben, a minimális állomástávolság betartásával választjuk ki
+(metró: $800$~m, $450$~m-es folyosó, $4$--$14$~km; villamos: $400$~m, $250$~m-es
+folyosó, $2$--$10$~km). A metró kereskedelmi sebessége $33$~km/h, követése
+$3$~perc, a villamosé $18$~km/h és $5$~perc. Villamos nem keresztezheti a Dunát.
+Az építési költség a vonalhosszal arányos; a metró kilométerköltségét a
+villamosénak \COSTRATIO-szeresére vesszük (érzékenység: $5$ és $20$). Az
+állomások meglévő csomópontokon vannak, és az igényt rögzítettnek tekintjük,
+vagyis a vonal hatása az eljutási idők javulásán keresztül jelenik meg.
 
 % =============================================================================
 \section{Eredmények}
 \label{sec:eredmeny}
-
-\subsection{A hálózat}
-
-Az ablakban \NTRIPSEG{} menet--szakasz indulás történik. A \NSEGS{} szakaszból
-\SEGBUS{} busz-, \SEGTRAM{} villamos-, \SEGTROLLEY{} trolibusz-, \SEGHEV{} HÉV-,
-\SEGMETRO{} metró- és \SEGFERRY{} hajószakasz. Az állapottér
-$|\Xs|=\NSTATES$ elemű, a $T$ részgenerátor ritka. A szakaszok
-menetidejének mediánja \MEDTAU~s, hosszuk mediánja \MEDDIST~m. A
-követési idők szabályosak: a $\mathrm{CV}^2$ mediánja \MEDCVSQ{}, a metrón
-\MEDCVSQMETRO{}. Ezért a \eqref{eq:theta} szerinti beszállási ráta
-indulásokkal súlyozott átlagban a gyakoriság \THETAF-szerese, és a
-felszállásonkénti átlagos várakozás \WAITBOARD{} perc a momentumillesztés
-nélküli \WAITBOARDOLD{} perc helyett.
 
 \subsection{Stacionárius áramlás}
 
@@ -597,98 +623,66 @@ A felszállások skáláját óránként \BOARDPH{} utasra rögzítettük
 (\ref{tab:param}.~táblázat). Ehhez óránként \JOURNPH{} kiinduló utazás tartozik,
 utazásonként átlagosan \LEGS{} úttal. A rendszerben egyszerre átlagosan
 \INSYS{} utas tartózkodik, közülük \WAITING{} várakozik (\WAITSHARE\%) és
-\RIDING{} utazik. Little törvénye szerint egy utazás várható hossza
-\EJOURNEY{} perc, ebből egy út átlagos menetideje \RIDELEG{} perc. A
-\ref{fig:flow}.~ábra a szakaszok terhelését mutatja a valós városképen: a
-legnagyobb terhelésű szakaszok a négy metróvonalon vannak (legfeljebb
-\MAXSEGFLOW{} utas óránként és irányonként), és jól kirajzolódnak a
-Nagykörút, a Hungária körút és a sugárirányú buszfolyosók is.
+\RIDING{} utazik. Egy utazás várható hossza \EJOURNEY{} perc, egy úté
+\RIDELEG{} perc, a felszállásonkénti átlagos várakozás \WAITBOARD{} perc. A
+\ref{fig:flow}.~ábra a terhelést mutatja a valós városképen: a legnagyobb
+terhelésű szakaszok a négy metróvonalon vannak (legfeljebb \MAXSEGFLOW{} utas
+óránként és irányonként), és jól kirajzolódik a Nagykörút, a Hungária körút
+és a sugárirányú buszfolyosók is.
 
 \begin{figure}[!htbp]
   \centering
-  \includegraphics[width=0.93\textwidth]{figures/fig_flow_map.pdf}
+  \includegraphics[width=0.9\textwidth]{figures/fig_flow_map.pdf}
   \caption{Stacionárius utasáramlás a reggeli csúcsban (2026.~június~9.,
   07:00--09:00), csomópontpáronként, a két irány és az összes viszonylat
-  összegeként. A szürke vonalak a BKK GTFS \texttt{shapes.txt} valós
-  útvonalai, a kék sáv a Duna, a vékony körvonalak a kerülethatárok
-  (EOV-vetület).}
+  összegeként. Szürke: a BKK GTFS \texttt{shapes.txt} valós útvonalai; kék
+  sáv: a Duna; vékony körvonalak: kerülethatárok (EOV-vetület).}
   \label{fig:flow}
 \end{figure}
 
 A legforgalmasabb csomópontok sorrendje (Örs vezér tere, Széll Kálmán tér,
 Keleti pályaudvar, Móricz Zsigmond körtér, Kelenföld vasútállomás, Deák
-Ferenc tér) megfelel a budapesti átszállóközpontok ismert szerepének. A
-legnagyobb, \MAXHUBBOARD{} utas/óra felszállás az Örs vezér terén
-adódott. A \ref{tet:poisson}.~tétel szerint a várakozók száma minden
-csomópontban Poisson-eloszlású, így a relatív szórás a forgalmas
-csomópontokon is $15$--$30\%$, ami a peronméretezésnél nem hanyagolható el.
+Ferenc tér) megfelel a budapesti átszállóközpontok ismert szerepének; a
+legnagyobb felszállásszám (\MAXHUBBOARD{} utas/óra) az Örs vezér terén
+adódott. A várakozók száma minden csomópontban Poisson-eloszlású, a relatív
+szórás a forgalmas csomópontokon is $15$--$30\%$. A felszállások
+\MSBBUS\%-a busz, \MSBTRAM\%-a villamos, \MSBTROLLEY\%-a trolibusz,
+\MSBHEV\%-a HÉV és \MSBMETRO\%-a metró. A metró részesedése alacsonyabb a
+valóságosnál, mert az indulásokkal arányos kiinduló igény a sűrű
+buszhálózatra teríti az utasokat; a térbeli \emph{sorrend} értelmes, az
+abszolút szintek kalibrálásához viszont igénymátrix kell
+(\ref{sec:korlat}.~fejezet).
 
-\paragraph{A modális megoszlás mint ellenőrzés.}
-A felszállások \MSBBUS\%-a busz, \MSBTRAM\%-a villamos, \MSBTROLLEY\%-a
-trolibusz, \MSBHEV\%-a HÉV és csak \MSBMETRO\%-a metró. A metró
-részesedése nagyságrenddel kisebb a valóságosnál. Ez a modell legfontosabb
-korlátjára mutat rá: az indulásokkal arányos kiinduló igény a sűrű
-buszhálózatra teríti az utasokat, a véletlen bolyongás pedig nem tereli a
-hosszú utazásokat a gyors gerincvonalakra. A térbeli \emph{sorrend} ettől még
-értelmes, az abszolút szinteket viszont csak igénymátrixszal vagy utasszámláló
-adatokkal lehetne kalibrálni (\ref{sec:korlat}.~fejezet).
-
-\subsection{Ellenőrzés és tranziens}
-
-A \ref{tet:poisson}.~tételt független utasok egzakt (Doob--Gillespie)
-szimulációjával \citep{gillespie1977} ellenőriztük. \MCN{} szimulált utazás (\MCSEC~s) átlagos
-hossza \MCMEAN{} perc (standard hiba \MCSE{} perc), az egzakt érték
-\EJOURNEYTWO{} perc, az eltérés \MCRELERR\%. Az $L_x>1$ állapotokban a
-foglaltság medián relatív eltérése \MCOCCERR\%, ami a mintaméretből adódó
-Monte-Carlo-szórás nagyságrendje. Az utazási idő eloszlása erősen ferde: a
-medián \JQFIFTY{}, a $90\%$-os kvantilis \JQNINETY{} perc.
-
-Az üres hálózatból induló feltöltődést a \ref{fig:transient}.~ábra
-mutatja. Az átlagos összes foglaltság \TFIFTY{} perc alatt éri el
-stacionárius értékének felét, és \TNINETYFIVE{} perc alatt a $95\%$-át. A $T$
-spektrális abszcisszájából számolt relaxációs idő viszont \TRELAX{} perc,
-mert a leglassabb sajátvektor egy olyan peremkerületi megállóban
-lokalizálódik, ahonnan az ablakban egyetlen járat indul (\NSINGLE{}
-szakasznak csak egy indulása van). A spektrális rés tehát a legrosszabbul
-kiszolgált sarkot jellemzi, nem a rendszer egészét; ugyanez érvényes a
-spektrumból számolt globális mutatókra (pl.\ a Kemény-állandóra,
-\citealp{kemeny1976}) is. Ezért a sérülékenységet nem spektrális mutatóval
-mérjük.
-
-\begin{figure}[!htbp]
-  \centering
-  \includegraphics[width=0.62\textwidth]{figures/fig_transient.pdf}
-  \caption{Az átlagos összes foglaltság feltöltődése üres kezdőállapotból,
-  a \eqref{eq:mt} képlet szerint.}
-  \label{fig:transient}
-\end{figure}
-
-\paragraph{Érzékenység.}
-A $\lambda$, $D$ és $p_{\mathrm{tr}}$ paramétereket egyenként változtattuk.
-$\lambda=0$ (tiszta gyakorisági megosztás) esetén az átlagos utazási idő
-\SLAMZEROJ{}, $\lambda=1/60$~s$^{-1}$ esetén \SLAMSIXTYJ{} perc, a várakozók
-aránya pedig \SLAMZEROW\%-ról \SLAMSIXTYW\%-ra nő, mert az erősebb preferencia
-több jármű elutasításával jár. $D=2{,}5$, illetve $5$~km mellett az
-utazási idő \SDLOW, illetve \SDHIGH{} perc, $p_{\mathrm{tr}}=0{,}2$,
-illetve $0{,}4$ mellett \SPLOW, illetve \SPHIGH{} perc. A térbeli mintázat
-ugyanakkor robusztus: a csomóponti felszállások Spearman-féle
-rangkorrelációja az alapesettel minden változatban legalább \SMINRHOHUB, a
-szakaszterheléseké legalább \SMINRHOSEG.
+\paragraph{Ellenőrzés, tranziens, érzékenység.}
+\MCN{} független utas egzakt szimulációja \citep{gillespie1977} szerint az
+átlagos utazási idő \MCMEAN{} perc (standard hiba \MCSE{} perc), az egzakt
+érték \EJOURNEYTWO{} perc. Az utazási idő eloszlása ferde: a medián
+\JQFIFTY{}, a $90\%$-os kvantilis \JQNINETY{} perc. Üres hálózatból indulva
+az átlagos foglaltság \TFIFTY{} perc alatt éri el stacionárius értékének
+felét és \TNINETYFIVE{} perc alatt $95\%$-át; a $T$ spektrális
+abszcisszájából adódó relaxációs idő (\TRELAX{} perc) egy peremkerületi,
+ritkán kiszolgált megállóban lokalizálódó sajátvektorhoz tartozik, ezért a
+rendszer egészének jellemzésére a feltöltődési idő alkalmasabb. A $\lambda$,
+$D$ és $p_{\mathrm{tr}}$ paraméterek egyenkénti változtatásakor az átlagos
+utazási idő $\lambda=0$ és $1/60$~s$^{-1}$ között \SLAMZEROJ--\SLAMSIXTYJ,
+$D=2{,}5$--$5$~km között \SDLOW--\SDHIGH, $p_{\mathrm{tr}}=0{,}2$--$0{,}4$
+között \SPLOW--\SPHIGH{} perc, a térbeli mintázat viszont robusztus: a
+csomóponti felszállások Spearman-féle rangkorrelációja az alapesettel
+legalább \SMINRHOHUB, a szakaszterheléseké legalább \SMINRHOSEG.
 
 \subsection{Sérülékenység}
 
-Az ép hálózat igényekkel súlyozott hatékonysága
-$E=\EZERO\cdot10^{-4}$~s$^{-1}$, ami \EHARM{} perces harmonikus átlagos
-eljutási időnek felel meg. A $60$ legnagyobb forgalmú csomópont bezárását és
-megszakadását pontosan kiszámoltuk ($120$ forgatókönyv, \RESSEC{} perc).
-A \ref{fig:critical}.~ábra és a \ref{tab:critical}.~táblázat a
+Az ép hálózat hatékonysága $E=\EZERO\cdot10^{-4}$~s$^{-1}$, ami \EHARM{}
+perces harmonikus átlagos eljutási időnek felel meg. A $60$ legnagyobb
+forgalmú csomópont bezárását és megszakadását pontosan kiszámoltuk ($120$
+forgatókönyv). A \ref{fig:critical}.~ábra és a \ref{tab:critical}.~táblázat a
 hálózati hatás szerinti tíz legkritikusabb csomópontot mutatja.
 
 \begin{figure}[!htbp]
   \centering
-  \includegraphics[width=0.93\textwidth]{figures/fig_critical_map.pdf}
+  \includegraphics[width=0.9\textwidth]{figures/fig_critical_map.pdf}
   \caption{Csomóponti felszállások (kék) és a bezárás hálózati hatása szerinti
-  tíz legkritikusabb csomópont (narancs, a számozás a
+  tíz legkritikusabb csomópont (narancs; a számozás a
   \ref{tab:critical}.~táblázat sorrendje).}
   \label{fig:critical}
 \end{figure}
@@ -696,9 +690,9 @@ hálózati hatás szerinti tíz legkritikusabb csomópontot mutatja.
 \begin{table}[!htbp]
 \centering
 \caption{A bezárás hálózati hatása szerinti tíz legkritikusabb csomópont.
-Módok: V villamos, M metró, B busz, T trolibusz, H HÉV. $\Delta E/E$:
-teljes veszteség; \enquote{hálózati}: a csomópontot nem érintő
-utazások hatékonyságvesztesége.}
+Módok: V villamos, M metró, B busz, T trolibusz, H HÉV. $\Delta E/E$: teljes
+veszteség; \enquote{hálózati}: a csomópontot nem érintő utazások
+hatékonyságvesztesége.}
 \label{tab:critical}
 \small
 \setlength{\tabcolsep}{4.5pt}
@@ -713,20 +707,98 @@ utazások hatékonyságvesztesége.}
 \end{tabular}
 \end{table}
 
-Három megfigyelés emelhető ki. (i) Az Örs vezér tere kiugró: bezárása a
-többi utazás hatékonyságát is $3{,}2\%$-kal rontja, mert itt csatlakozik a
-gödöllői HÉV, az M2 és a keleti busz- és villamoshálózat. (ii) A hálózati
-hatás nem azonos a forgalommal: a rangkorreláció csak \RHOTHRU. A
-Hűvösvölgy és a Határ út forgalma közepes, mégis a második és harmadik
-helyen áll, mert a budai hegyvidék, illetve a dél-pesti buszhálózat felé
-egyetlen átszállási pontként működik. A Deák Ferenc tér ezzel szemben
-nagy közvetlen veszteséget okoz, de a párhuzamos metróvonalak és a Kálvin tér
-miatt hálózati szerepe kisebb. (iii) Megszakadáskor, amikor a vonalak is
-kettészakadnak, a belső metrócsomópontok kerülnek előre
-(\FAILNAMEA{} \FAILNETA\%, \FAILNAMEB{} \FAILNETB\%, \FAILNAMEC{}
-\FAILNETC\%); a két forgatókönyv rangkorrelációja \RHOCF. A bezárás és a
-megszakadás tehát két különböző kérdésre felel: az előbbi az
-átszállóközpontok, az utóbbi a pályahálózat sérülékenységét méri.
+Az Örs vezér tere kiugró: bezárása a többi utazás hatékonyságát is
+$3{,}2\%$-kal rontja, mert itt csatlakozik a gödöllői HÉV, az M2 és a keleti
+busz- és villamoshálózat. A hálózati hatás nem azonos a forgalommal, a
+rangkorreláció \RHOTHRU: a Hűvösvölgy és a Határ út közepes forgalom mellett
+a második és harmadik, mert a budai hegyvidék, illetve a dél-pesti
+buszhálózat felé egyetlen átszállási pontként működik, a Deák Ferenc tér
+hálózati szerepét viszont a párhuzamos metróvonalak mérséklik.
+Megszakadáskor a belső metrócsomópontok kerülnek előre (\FAILNAMEA{}
+\FAILNETA\%, \FAILNAMEB{} \FAILNETB\%, \FAILNAMEC{} \FAILNETC\%); a két
+forgatókönyv rangkorrelációja \RHOCF, vagyis az átszállóközpontok és a
+pályahálózat sérülékenysége két külön kérdés.
+
+\subsection{Új vonalak}
+
+Az \NCAND{} jelölt vonalból (\NCANDM{} metró, \NCANDV{} villamos) a mohó
+algoritmus választotta ki a
+\ref{tab:lines}.~táblázat és a \ref{fig:newlines}.~ábra öt vonalát. Az öt vonal
+együtt \PKGGAIN\%-kal növeli a hatékonyságot; a teljes Dijkstra-számítással
+kapott érték megegyezik a min-plusz frissítésekből kapott \PKGGAINMP\%-kal,
+ami a \ref{tet:minplus}.~tétel gyakorlati ellenőrzése. Az utasszámok a
+kiegészített hálózaton, rögzített igény mellett számolt csúcsidei
+felszállások.
+
+\begin{table}[!htbp]
+\centering
+\caption{A javasolt vonalak (U1--U5) a kiválasztás sorrendjében és a tervezett
+M5 két központi változata. $\Delta E/E$: a hatékonyság határnövekménye (az M5
+soraiban a teljes növekmény); \enquote{per költség}: $\Delta E/E$ osztva a
+költségindexszel ($\cdot10^{-4}$; villamos 1/km, metró \COSTRATIO/km);
+utas/óra: felszállások a reggeli csúcsban.}
+\label{tab:lines}
+\footnotesize
+\setlength{\tabcolsep}{3pt}
+\begin{tabular}{p{2.1cm}lp{4.4cm}rrrrr}
+\toprule
+ & Mód & Végpontok & Áll. & km & $\Delta E/E$ [\%] & /költség & Utas/óra \\
+\midrule
+\csname @@input\endcsname generated/table_lines.tex
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{figure}[!htbp]
+  \centering
+  \includegraphics[width=0.9\textwidth]{figures/fig_new_lines.pdf}
+  \caption{A javasolt vonalak (U1--U5, a kiválasztás sorrendjében) és a
+  tervezett M5 metró A változata a meglévő kötöttpályás hálózaton.}
+  \label{fig:newlines}
+\end{figure}
+
+\paragraph{A javasolt vonalak.}
+Az alapesetben (a metró kilométerköltsége a villamosénak \COSTRATIO-szerese)
+mind az öt kiválasztott vonal villamos, mert a rövid, meglévő csomópontokat
+összekötő villamosvonalak egységnyi költségre több javulást hoznak, mint a
+metró. Az U1 (\ULENA~km) Kispest belső részét köti össze a Kőbánya-Kispest
+és a Határ út metróállomással. Az U2 a Keleti pályaudvarból a Damjanich
+utcán és a Városligeten át a Róbert Károly körútig, az U3 a Városliget keleti
+szélén át Zuglóig (Erzsébet királyné útja) vezet. Az U4 a Rákóczi tér --
+Astoria -- Deák Ferenc tér -- Széchenyi István tér útvonalon a Kiskörút
+hiányzó villamoskapcsolatát pótolja, az U5 pedig a Hősök terét a Nyugati
+pályaudvaron át a Kossuth Lajos térrel köti össze. A vonalakat a modell
+csúcsóránként $500$--$650$ felszállással terheli. A határnövekmények csökkenő
+sorrendje (\UGAINA\% után \UGAINE\%) a \ref{all:szubmod}.~állításban
+megfogalmazott csökkenő hozadéknak felel meg.
+
+\paragraph{Érzékenység és a metróvonalak.}
+Ha a metró kilométerköltsége csak a villamosénak ötszöröse, az első három
+villamos után két metróvonal következik: \RFIVENAMEA{} (\RFIVELENA~km,
+$+$\RFIVEGAINA\%) és \RFIVENAMEB{} (\RFIVELENB~km, $+$\RFIVEGAINB\%); a
+csomag együttes javulása ekkor \RFIVECUM\%. Az első metró nyomvonala
+gyakorlatilag a tervezett M5 belvárosi alagútja, vagyis a módszer a
+tervektől függetlenül is ezt a folyosót találja meg. Húszszoros költségaránynál
+a kiválasztás azonos az alapesettel. A költségtől eltekintve, tisztán a
+javulás szerint rangsorolva mind az öt vonal metró: \PGNAMEA{}
+($+$\PGGAINA\%), \PGNAMEB{} ($+$\PGGAINB\%) és \PGNAMEC{} ($+$\PGGAINC\%) az
+első három, együtt öt vonallal \PGCUM\%. A második ismét az M5
+folyosója, a Csepeli HÉV vonalán meghosszabbítva.
+
+\paragraph{A tervezett M5.}
+Az M5 két belvárosi változatát (A: Lehel tér, B: Nyugati pályaudvar) a
+szentendrei, a ráckevei és a csepeli HÉV átmenő forgalmával modelleztük: a
+H5 utasai a Margit híd budai hídfőjénél, a H6 és H7 utasai a Közvágóhídnál,
+illetve a Boráros téren átszállás nélkül haladnak tovább. A hatékonyság
+javulása \MFGAINA\%, illetve \MFGAINB\%, ami nagyobb, mint az öt javasolt
+villamosvonalé együtt (\PKGGAIN\%). Csúcsóránként mintegy \MFBOARDA{}
+felszállást vonz. Egységnyi költségre vetítve azonban a jelöltek
+között csak a \MFRANKB.\ (B), illetve \MFRANKA.\ (A) helyen áll, mert a
+metró kilométerköltsége a villamosénak többszöröse. A Nyugati pályaudvari
+változat rövidebb és valamivel nagyobb javulást ad, ezért a modell szerint
+kedvezőbb. Összefoglalva: rövid távon a belső villamoshálózat hiányzó
+kapcsolatai hozzák a legtöbbet egységnyi költségre, nagyobb beruházási
+keretben pedig az M5 folyosója a leghatékonyabb metróvonal.
 
 % =============================================================================
 \section{Korlátok}
@@ -734,27 +806,27 @@ megszakadás tehát két különböző kérdésre felel: az előbbi az
 
 \begin{itemize}
   \item \textbf{Igény.} A kiinduló igény az indulásokkal arányos. Népességi,
-    munkahelyi vagy jegyadatok nélkül az abszolút szintek, és különösen a
-    módok közötti megoszlás, csak szemléltető jellegűek. A lineáris szerkezet miatt
-    a teljes skála egyetlen szorzóban van, a térbeli mintázat viszont csak
+    munkahelyi vagy jegyadatok nélkül az abszolút szintek, különösen a módok
+    közötti megoszlás, szemléltető jellegűek. A lineáris szerkezet miatt a
+    teljes skála egyetlen szorzóban van, a térbeli mintázat viszont csak
     igénymátrixszal kalibrálható.
-  \item \textbf{Célirányos útvonalválasztás hiánya.} Az utas nem egy
-    célállomás felé halad, hanem csomópontonként választ. A célt is tartalmazó
-    állapottér ($\Xs\times\Hs$) elvileg kezelhető, de kalibrálásához
+  \item \textbf{Útvonalválasztás.} Az utas nem egy célállomás felé halad,
+    hanem csomópontonként választ. A célt is tartalmazó állapottér
+    ($\Xs\times\Hs$) elvileg kezelhető, kalibrálásához viszont
     származási--célállomási adatok kellenek.
-  \item \textbf{Kapacitás.} A modell lineáris, azaz nem számol a járművek
-    befogadóképességével; zsúfoltságtól függő ráták mellett elveszne a
-    Poisson-tétel.
-  \item \textbf{Exponenciális tartózkodási idők.} A momentumillesztés csak az
-    átlagot illeszti. Erlang-fázisokkal a szórás is illeszthető lenne,
-    az állapottér növelése árán; a \ref{tet:poisson}.~tétel ekkor is érvényes.
+  \item \textbf{Kapacitás.} A modell lineáris, a járművek befogadóképességével
+    nem számol; zsúfoltságtól függő ráták mellett elveszne a Poisson-tétel.
+  \item \textbf{Exponenciális tartózkodási idők.} A beszállási ráta az
+    átlagot illeszti; Erlang-fázisokkal a szórás is illeszthető, az állapottér
+    növelése árán, és a \ref{tet:poisson}.~tétel ekkor is érvényes.
   \item \textbf{Időbeli homogenitás.} Az ablakon belül állandó rátákat
-    feltételezünk. Szakaszonként állandó $T(t)$ mellett a tétel ugyanígy
-    érvényes, $e^{Tt}$ helyett időrendezett szorzattal.
-  \item \textbf{Sérülékenységi mutató.} A legrövidebb várható idők
-    determinisztikus útvonalakat feltételeznek, és egy-egy viszonylat
-    várakozási idejével számolnak, ami felülbecsli a több közös vonallal
-    kiszolgált párok eljutási idejét.
+    feltételezünk; szakaszonként állandó $T(t)$ mellett a tétel ugyanígy
+    érvényes, időrendezett szorzattal.
+  \item \textbf{Hálózatfejlesztés.} Az új vonalak állomásai meglévő
+    csomópontokon vannak, az igény rögzített (nincs indukált forgalom), a
+    költség a hosszal arányos index, és a vonalak egyenes folyosókban futnak.
+    Az eredmények ezért rangsorolásra és változatok összevetésére
+    alkalmasak, nem beruházási döntésre.
 \end{itemize}
 
 % =============================================================================
@@ -763,28 +835,31 @@ megszakadás tehát két különböző kérdésre felel: az előbbi az
 
 A dolgozatban kizárólag nyilvános menetrendi adatokból építettünk
 utasáramlási modellt a budapesti közösségi közlekedésre. A vonalszintű nyílt
-Markov-hálózatban az utas a járművön marad, amíg le nem száll, a beszállási
-ráta a követési idő első két momentumához illeszkedik, a viszonylatválasztás a
-minimális relatív entrópia elvéből következik, és Poisson-ritkítással pontosan
-megvalósul. A modell egzakt megoldása (független Poisson-foglaltság,
-fázistípusú utazási idő) fölöslegessé teszi a sztochasztikus szimulációt,
-amelyet csak ellenőrzésre használtunk. A kutatási kérdés három részére tehát
-igenlő a válasz: a modell következetes, a teljes hálózaton percek alatt
-egzaktul megoldható, és értelmezhető sérülékenységi rangsort ad.
+Markov-hálózatban a beszállási ráta a követési idő első két momentumához
+illeszkedik, a viszonylatválasztás a minimális relatív entrópia elvéből
+következik, és Poisson-ritkítással pontosan megvalósul. A modell egzakt
+megoldása (független Poisson-foglaltság, fázistípusú utazási idő) a teljes
+hálózaton egyetlen ritka lineáris egyenletrendszer, a szimulációt csak
+ellenőrzésre használtuk (K1).
 
 A 2026.~június~9-i reggeli csúcsra a modell a budapesti átszállóközpontok
-ismert sorrendjét adja, és rámutat, hogy egy csomópont kritikussága nem
+ismert sorrendjét adja, és megmutatja, hogy egy csomópont kritikussága nem
 azonos a forgalmával: a Hűvösvölgy vagy a Határ út hálózati szerepe nagyobb,
-mint amit forgalmuk sejtetne. A modális megoszlás ugyanakkor világosan jelzi
-a következő lépést: az igényoldali adatok bevonását. Mivel a modell lineáris
-és egzakt, ez a kalibráció egyszerű: utasszámláló adatok esetén az $\bm L$
-és az áramlások lineárisak a $\lambda_h$ forrásokban, így a forrásvektor
-nemnegatív legkisebb négyzetes feladattal becsülhető.
+mint amit forgalmuk sejtetne (K2). Az új vonal hatásának min-plusz alakja és
+a célfüggvény csökkenő hozadéka lehetővé tette, hogy több mint ezer jelölt
+vonal közül pontosan kiértékelt, mohó módon válasszunk; a javasolt vonalakat
+és a tervezett M5-öt ugyanabban a keretben hasonlítottuk össze (K3).
+
+A következő lépés az igényoldali adatok bevonása. Mivel a modell lineáris és
+egzakt, ez egyszerű: utasszámláló adatok esetén az $\bm L$ és az áramlások
+lineárisak a $\lambda_h$ forrásokban, így a forrásvektor nemnegatív legkisebb
+négyzetes feladattal becsülhető, és a hálózatfejlesztési rangsor ezután a
+mért igénnyel is újraszámolható.
 
 \paragraph{Adatok és kód.}
-A menetrend: BKK GTFS \FEEDVER{} (CC0), a MobilityData tükréről.
-Kerülethatárok: geoBoundaries HUN ADM2 \citep{runfola2020}. A
-megvalósítást és a reprodukálás lépéseit az \ref{app:repro}.~függelék írja le.
+Menetrend: BKK GTFS \FEEDVER{} (CC0), a MobilityData tükréről;
+kerülethatárok: geoBoundaries HUN ADM2 \citep{runfola2020}. A megvalósítást
+és a reprodukálás lépéseit az \ref{app:repro}.~függelék írja le.
 
 % =============================================================================
 \renewcommand{\refname}{Irodalomjegyzék}
@@ -814,10 +889,20 @@ Chriqui, C., Robillard, P. (1975).
 Common bus lines.
 \emph{Transportation Science}, 9(2):115--121.
 
+\bibitem[Farahani és mtsai(2013)]{farahani2013}
+Farahani, R.~Z., Miandoabchi, E., Szeto, W.~Y., Rashidi, H. (2013).
+A review of urban transportation network design problems.
+\emph{European Journal of Operational Research}, 229(2):281--302.
+
 \bibitem[Gillespie(1977)]{gillespie1977}
 Gillespie, D.~T. (1977).
 Exact stochastic simulation of coupled chemical reactions.
 \emph{Journal of Physical Chemistry}, 81(25):2340--2361.
+
+\bibitem[Guihaire és Hao(2008)]{guihaire2008}
+Guihaire, V., Hao, J.-K. (2008).
+Transit network design and scheduling: A global review.
+\emph{Transportation Research Part A}, 42(10):1251--1273.
 
 \bibitem[Jackson(1957)]{jackson1957}
 Jackson, J.~R. (1957).
@@ -830,10 +915,10 @@ Solving the chemical master equation for monomolecular reaction systems
 analytically.
 \emph{Journal of Mathematical Biology}, 54(1):1--26.
 
-\bibitem[Kemeny és Snell(1976)]{kemeny1976}
-Kemeny, J.~G., Snell, J.~L. (1976).
-\emph{Finite Markov Chains}.
-Springer, New York.
+\bibitem[Khuller és mtsai(1999)]{khuller1999}
+Khuller, S., Moss, A., Naor, J.~S. (1999).
+The budgeted maximum coverage problem.
+\emph{Information Processing Letters}, 70(1):39--45.
 
 \bibitem[Kingman(1993)]{kingman1993}
 Kingman, J.~F.~C. (1993).
@@ -849,6 +934,11 @@ Prentice-Hall, Englewood Cliffs.
 Latora, V., Marchiori, M. (2001).
 Efficient behavior of small-world networks.
 \emph{Physical Review Letters}, 87(19):198701.
+
+\bibitem[Nemhauser és mtsai(1978)]{nemhauser1978}
+Nemhauser, G.~L., Wolsey, L.~A., Fisher, M.~L. (1978).
+An analysis of approximations for maximizing submodular set functions --~I.
+\emph{Mathematical Programming}, 14(1):265--294.
 
 \bibitem[Neuts(1981)]{neuts1981}
 Neuts, M.~F. (1981).
@@ -883,6 +973,7 @@ mode split and route split.
 \emph{Journal of Transport Economics and Policy}, 3(1):108--126.
 
 \end{thebibliography}
+
 % =============================================================================
 \appendix
 \renewcommand{\thesection}{\Alph{section}}
@@ -895,15 +986,16 @@ dolgozat minden száma, ábrája és táblázata az alábbi lépésekkel állít
 \begin{enumerate}
   \item a BKK GTFS-menetrend (\FEEDVER) letöltése a MobilityData tükréről;
   \item \texttt{python scripts/tdk\_analysis.py --date 20260609}
-    (stacionárius megoldás, Monte-Carlo-ellenőrzés, érzékenység,
-    $120$ sérülékenységi forgatókönyv; kb.\ $15$ perc);
+    (stacionárius megoldás, ellenőrzés, érzékenység, sérülékenység);
+  \item \texttt{python scripts/tdk\_scenarios.py} (új vonalak, M5);
   \item \texttt{python scripts/tdk\_figures.py} (térképek EOV-vetületben);
-  \item \texttt{python scripts/tdk\_tex\_numbers.py} (a szövegbeli számok
-    és a táblázat generálása).
+  \item \texttt{python scripts/tdk\_tex\_numbers.py} (a szövegbeli számok és
+    a táblázatok generálása).
 \end{enumerate}
-A számok tehát nem kézzel kerülnek a szövegbe. A megvalósítást automatikus
-tesztek ellenőrzik, köztük a részgenerátor szerkezete, Little törvénye, a
-tranziens konvergenciája és az egzakt megoldás Monte-Carlo-összevetése.
+A megvalósítást automatikus tesztek ellenőrzik, köztük a részgenerátor
+szerkezete, Little törvénye, a tranziens konvergenciája, az egzakt megoldás
+Monte-Carlo-összevetése és a min-plusz frissítés egyezése a teljes
+Dijkstra-számítással.
 
 \section{Nyilatkozat a mesterséges intelligencia használatáról}
 \label{app:mi}
@@ -913,15 +1005,15 @@ milyen eszközöket és milyen célra használt a szerző. A dolgozat jelen
 változatának elkészítésében az Anthropic Claude nagy nyelvi modellje
 (Claude Code fejlesztői környezetben) a következő feladatokat végezte:
 \begin{itemize}
-  \item a Python-kód (modell, elemzés, térképek, tesztek) megírása és
-    hibakeresése;
+  \item a Python-kód (modell, elemzés, hálózatfejlesztési számítások,
+    térképek, tesztek) megírása és hibakeresése;
   \item a matematikai levezetések és bizonyítások megfogalmazása;
   \item szakirodalmi források és a BKK közzétett adatainak keresése;
   \item a dolgozat szövegének és ábráinak elkészítése.
 \end{itemize}
-[A szerző kiegészítése: a saját munka pontos leírása (pl.\ a kutatási kérdés
-megfogalmazása, a modellválasztás, az eredmények ellenőrzése és értelmezése,
-a szöveg átírása), valamint annak megjelölése, mely részek maradtak
-mesterséges intelligenciával előállított formában.]
+[A szerző kiegészítése: a saját munka pontos leírása (pl.\ a kutatási
+kérdések megfogalmazása, a modellválasztás, az eredmények ellenőrzése és
+értelmezése, a szöveg átírása), valamint annak megjelölése, mely részek
+maradtak mesterséges intelligenciával előállított formában.]
 
 \end{document}

@@ -28,6 +28,9 @@ dropped, weekday-union calendar inflating frequencies 2.4×). Version 3 adds
 * open network with Poisson inflow → occupancies are **independent Poisson**, journey time is
   phase-type; solved exactly with one sparse linear solve (simulation only for verification)
 * demand-weighted efficiency with exact Dijkstra for station-closure / node-failure analysis
+* `bkk/scenario.py`: new-line scenarios — exact min-plus update of all shortest times for a
+  candidate line, lazy greedy selection by efficiency gain per construction cost, through-running
+  into existing lines (used for the planned M5 benchmark)
 
 The Hungarian TDK paper is `tdk/tdk_dolgozat.pdf`. Every number in it is reproduced by:
 
@@ -36,6 +39,7 @@ The Hungarian TDK paper is `tdk/tdk_dolgozat.pdf`. Every number in it is reprodu
 curl -L -o data/budapest_gtfs.zip \
   "https://storage.googleapis.com/storage/v1/b/mdb-latest/o/hu-budapest-budapesti-kozlekedesi-kozpont-bkk-gtfs-990.zip?alt=media"
 python scripts/tdk_analysis.py --date 20260609   # ~15 min, writes data/results/
+python scripts/tdk_scenarios.py                  # new metro/tram lines + planned M5 benchmark
 python scripts/tdk_figures.py                    # Budapest maps (EOV), downloads geoBoundaries
 python scripts/tdk_tex_numbers.py                # LaTeX macros + table
 cd tdk && pdflatex tdk_dolgozat.tex && pdflatex tdk_dolgozat.tex
@@ -300,6 +304,7 @@ bkk_framework/
 │   ├── simulate.py      KFESolver, GillespieSSA, TauLeap
 │   ├── resilience.py    ResilienceAnalyser: Kemeny/gap/efficiency
 │   ├── linemodel.py     v3 line-aware open Markov network (exact solution)
+│   ├── scenario.py      new-line scenarios (min-plus screening, greedy selection)
 │   └── cli.py           CLI entry points
 ├── tests/
 │   ├── test_core.py         Core mathematical and interface tests
@@ -308,6 +313,7 @@ bkk_framework/
 ├── scripts/
 │   ├── run_pipeline.py  End-to-end pipeline script (legacy v2)
 │   ├── tdk_analysis.py  v3 analysis behind the TDK paper
+│   ├── tdk_scenarios.py new metro/tram lines and the M5 benchmark
 │   ├── tdk_figures.py   maps and figures
 │   ├── budapest_basemap.py  vector basemap (districts, Danube, GTFS shapes)
 │   └── tdk_tex_numbers.py   results → LaTeX macros
