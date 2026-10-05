@@ -31,6 +31,9 @@ dropped, weekday-union calendar inflating frequencies 2.4×). Version 3 adds
 * `bkk/scenario.py`: new-line scenarios — exact min-plus update of all shortest times for a
   candidate line, lazy greedy selection by efficiency gain per construction cost, through-running
   into existing lines (used for the planned M5 benchmark)
+* `bkk/streets.py`: street graph from GTFS `shapes.txt` (40 m grid); new trams are routed by
+  shortest path on main roads only (tram track, trolleybus, or ≥ 3 bus routes) and cross the
+  Danube only on today's tram bridges; metro stays a straight tunnel
 
 The Hungarian TDK paper is `tdk/tdk_dolgozat.pdf`. Every number in it is reproduced by:
 
@@ -305,6 +308,7 @@ bkk_framework/
 │   ├── resilience.py    ResilienceAnalyser: Kemeny/gap/efficiency
 │   ├── linemodel.py     v3 line-aware open Markov network (exact solution)
 │   ├── scenario.py      new-line scenarios (min-plus screening, greedy selection)
+│   ├── streets.py       GTFS-shape street graph and main-road router
 │   └── cli.py           CLI entry points
 ├── tests/
 │   ├── test_core.py         Core mathematical and interface tests

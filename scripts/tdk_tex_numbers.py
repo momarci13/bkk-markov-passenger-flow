@@ -126,6 +126,15 @@ def main() -> None:
     scen = RES / "scenarios.json"
     if scen.exists():
         S = json.load(open(scen))
+        sg = S["street_graph"]
+        m["SGNODES"] = hui(sg["nodes"])
+        m["SGALLKM"] = hui(sg["all_km"])
+        m["SGMAINKM"] = hui(sg["main_km"])
+        m["SGTRAMHUBS"] = hui(sg["tram_station_hubs"])
+        m["SGBRIDGE"] = hui(sg["bridge_edges_removed"])
+        if S.get("example_route"):
+            m["EXROUTE"] = " -- ".join(S["example_route"]["stations"])
+            m["EXLEN"] = hu(S["example_route"]["length_km"], 2)
         m["NCAND"] = hui(S["n_candidates"])
         m["NCANDM"] = hui(S["n_metro"])
         m["NCANDV"] = hui(S["n_tram"])

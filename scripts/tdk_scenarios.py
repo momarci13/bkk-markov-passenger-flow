@@ -32,8 +32,10 @@ from budapest_basemap import BUDA, CSEPEL, eov, load_districts  # noqa: E402
 from bkk.linemodel import ModelParams, OpenNetworkModel  # noqa: E402
 from bkk.scenario import (  # noqa: E402
     METRO, TRAM, MinPlusEvaluator, NewLine, add_lines, find_segment,
-    first_round_gains, generate_candidates, greedy_select, line_cost, line_length_m,
+    first_round_gains, generate_candidates, generate_street_candidates, greedy_select,
+    line_cost, line_length_m,
 )
+from bkk.streets import Router, build_street_graph  # noqa: E402
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(message)s", datefmt="%H:%M:%S")
 log = logging.getLogger("scen")
@@ -44,10 +46,11 @@ RES = Path(__import__("os").environ.get("SCEN_OUT", "data/results"))
 
 
 def hub(net, name: str) -> int:
+    """Hub with this name; among same-name hubs the one with most departures."""
     k = np.flatnonzero(net.hub_name == name)
-    if len(k) != 1:
+    if len(k) == 0:
         raise KeyError(name)
-    return int(k[0])
+    return int(k[np.argmax(net.hub_departures()[k])])
 
 
 def line_predictions(model: OpenNetworkModel, lam: np.ndarray, name: str) -> dict:
@@ -94,18 +97,69 @@ def main() -> None:
     pool = np.flatnonzero(model.hub_active & in_city)
     ends = pool[np.argsort(-w[pool])][:N_END]
 
+    # --- street graph from GTFS shapes; trams run on main roads only --------
+    sg_cache = Path("data/cache/streets.pkl")
+    if sg_cache.exists():
+        G = pickle.load(open(sg_cache, "rb"))
+    else:
+        import zipfile
+        with zipfile.ZipFile("data/budapest_gtfs.zip") as z:
+            sh = pd.read_csv(z.open("shapes.txt"), dtype={"shape_id": str})
+            tr = pd.read_csv(z.open("trips.txt"), dtype=str, usecols=["route_id", "shape_id"])
+            ro = pd.read_csv(z.open("routes.txt"), dtype=str, usecols=["route_id", "route_type"])
+        G = build_street_graph(sh, tr.drop_duplicates().merge(ro, on="route_id"))
+        pickle.dump(G, open(sg_cache, "wb"))
+    main = G.main_roads(min_bus_routes=3)
+    # Danube crossings: trams only on bridges that carry trams today
+    # (Margit, Petőfi, Rákóczi híd) -- not on the historic Lánchíd etc.
+    import shapely
+    from bkk.streets import unproject
+    A = main.tocoo()
+    up = A.row < A.col
+    r_, c_ = A.row[up], A.col[up]
+    la1, lo1 = unproject(G.xy[r_, 0], G.xy[r_, 1])
+    la2, lo2 = unproject(G.xy[c_, 0], G.xy[c_, 1])
+    x1, y1 = eov(lo1, la1)
+    x2, y2 = eov(lo2, la2)
+    segs = shapely.linestrings(np.stack([np.column_stack([x1, y1]),
+                                         np.column_stack([x2, y2])], axis=1))
+    crossing = shapely.intersects(segs, water)
+    has_tram = np.asarray(G.tram[r_, c_]).ravel() > 0.5
+    drop = crossing & ~has_tram
+    keep = ~drop
+    from scipy.sparse import csr_matrix as _csr
+    rr, cc, vv = r_[keep], c_[keep], A.data[up][keep]
+    main = _csr((np.r_[vv, vv], (np.r_[rr, cc], np.r_[cc, rr])), shape=main.shape)
+    log.info("main-road graph: %d river-crossing edges without tram removed", int(drop.sum()))
+    router = Router.build(G, main, net.hub_lat, net.hub_lon, max_snap_m=120.0)
+    tram_pool = pool[router.hub_node[pool] >= 0]
+
     # --- candidates and greedy selection -------------------------------------
-    cands = []
-    for spec in (METRO, TRAM):
-        c = generate_candidates(net, w, spec, ends, pool, crosses_danube=crosses)
-        cands += [x for x in c if len(x.hubs) >= 3]
-        log.info("%s candidates: %d", "metro" if spec.mode == 1 else "tram", len(c))
-    R = {"baseline_efficiency": E0, "n_candidates": len(cands),
+    cands = [x for x in generate_candidates(net, w, METRO, ends, pool, crosses_danube=crosses)
+             if len(x.hubs) >= 3]
+    n_m = len(cands)
+    cands += [x for x in generate_street_candidates(net, w, TRAM, ends, tram_pool, router)
+              if len(x.hubs) >= 3]
+    log.info("candidates: %d metro (straight tunnels), %d tram (street-routed)",
+             n_m, len(cands) - n_m)
+    # the worked example of the paper: Rákóczi tér -> Széchenyi István tér by tram
+    ex = generate_street_candidates(net, w, TRAM, [hub(net, "Rákóczi tér"),
+                                    hub(net, "Széchenyi István tér")], tram_pool, router)
+    R = {"street_graph": {"nodes": int(G.n_nodes), "edges": int(G.adj.nnz // 2),
+                          "main_edges": int(main.nnz // 2),
+                          "main_km": float(main.sum() / 2 / 1000),
+                          "all_km": float(G.adj.sum() / 2 / 1000),
+                          "tram_station_hubs": int(len(tram_pool)),
+                          "bridge_edges_removed": int(drop.sum()),
+                          "active_city_hubs": int(len(pool))},
+         "example_route": {"stations": [str(net.hub_name[h]) for h in ex[0].hubs],
+                           "length_km": line_length_m(net, ex[0]) / 1000} if ex else None,
+         "baseline_efficiency": E0, "n_candidates": len(cands),
          "n_metro": sum(c.spec.mode == 1 for c in cands),
          "n_tram": sum(c.spec.mode == 0 for c in cands),
          "endpoints": int(len(ends)), "cost_ratio": METRO.cost_per_km / TRAM.cost_per_km}
 
-    cache = Path(f"data/cache/scen_gains_{N_END}.pkl")
+    cache = Path(f"data/cache/scen_gains_streets_{N_END}.pkl")
     t1 = time.perf_counter()
     if cache.exists():
         g1 = pickle.load(open(cache, "rb"))
@@ -238,6 +292,13 @@ def main() -> None:
             geo.append({"line": f"M5{v}", "mode": "metró", "order": k,
                         "hub": str(net.hub_name[h_]), "lat": net.hub_lat[h_], "lon": net.hub_lon[h_]})
     pd.DataFrame(geo).to_csv(RES / "new_lines.csv", index=False)
+    paths = []
+    for r, l in zip(rows, lines):
+        if l.path_latlon is not None:
+            for k, (la, lo) in enumerate(l.path_latlon):
+                paths.append({"line": r["name"], "order": k, "lat": la, "lon": lo})
+    pd.DataFrame(paths, columns=["line", "order", "lat", "lon"]).to_csv(
+        RES / "new_line_paths.csv", index=False)
     log.info("wrote scenarios (%.0f s)", R["seconds"])
 
 

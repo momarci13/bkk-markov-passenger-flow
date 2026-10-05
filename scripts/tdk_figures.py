@@ -135,6 +135,9 @@ def fig_new_lines(districts, shapes):
     """Proposed lines (U1..U5) and the planned M5 on top of the rail network."""
     nl = pd.read_csv(RES / "new_lines.csv")
     sc = json.load(open(RES / "scenarios.json"))
+    pth = RES / "new_line_paths.csv"
+    paths = pd.read_csv(pth) if pth.exists() else pd.DataFrame(columns=["line", "order",
+                                                                         "lat", "lon"])
     by_mode = shape_ids_by_mode()
     metro = load_shapes(shape_ids=by_mode.get(1, set()))
     hev = load_shapes(shape_ids=by_mode.get(109, set()))
@@ -159,8 +162,15 @@ def fig_new_lines(districts, shapes):
     cx0, cy0 = np.mean(allx), np.mean(ally)
     for rec, x, y, col in geoms:
         lw = 3.2 if rec["mode"] == "metró" else 2.2
-        ax.plot(x, y, color="white", lw=lw + 1.8, solid_capstyle="round", zorder=4)
-        ax.plot(x, y, color=col, lw=lw, solid_capstyle="round", zorder=4.1)
+        gp = paths[paths.line == rec["name"]].sort_values("order")
+        if len(gp):                       # street-routed line: draw the real path
+            px, py = eov(gp.lon.values, gp.lat.values)
+        else:                             # tunnel: straight between stations
+            px, py = x, y
+        ax.plot(px, py, color="white", lw=lw + 1.8, solid_capstyle="round",
+                solid_joinstyle="round", zorder=4)
+        ax.plot(px, py, color=col, lw=lw, solid_capstyle="round", solid_joinstyle="round",
+                zorder=4.1)
         ax.scatter(x, y, s=14, facecolor="white", edgecolor=col, lw=1.0, zorder=4.2)
         # label at the end farther from the centre, pushed outwards
         e = 0 if np.hypot(x[0] - cx0, y[0] - cy0) > np.hypot(x[-1] - cx0, y[-1] - cy0) else -1
@@ -188,7 +198,10 @@ def fig_new_lines(districts, shapes):
                Line2D([], [], color="#52514e", lw=1.0, ls=(0, (4, 2)), label="meglévő HÉV"),
                Line2D([], [], color="#8e8c86", lw=0.6, label="meglévő villamos"),
                Line2D([], [], color=INK, lw=1.8, ls=(0, (2.5, 1.5)), label="tervezett M5 (A)"),
-               Line2D([], [], color="#2a78d6", lw=2.2, label="javasolt villamos (U1–U5)")]
+               Line2D([], [], color="#2a78d6", lw=2.2, label="javasolt villamos (utcán)")]
+    if any(r["mode"] == "metró" for r in sc["selected"]):
+        handles.insert(-1, Line2D([], [], color="#2a78d6", lw=3.2,
+                                  label="javasolt metró (alagút)"))
     ax.legend(handles=handles, loc="lower right", frameon=True, fontsize=6.3,
               labelcolor=INK2, handlelength=2.4, facecolor="white", edgecolor="none",
               framealpha=0.9)

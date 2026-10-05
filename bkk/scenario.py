@@ -51,9 +51,9 @@ class ModeSpec:
 
 METRO = ModeSpec(mode=1, speed_kmh=33.0, headway_s=180.0, spacing_m=800.0, corridor_m=450.0,
                  min_len_m=4000.0, max_len_m=14000.0, detour=1.10, cost_per_km=10.0)
-TRAM = ModeSpec(mode=0, speed_kmh=18.0, headway_s=300.0, spacing_m=400.0, corridor_m=250.0,
+TRAM = ModeSpec(mode=0, speed_kmh=18.0, headway_s=300.0, spacing_m=350.0, corridor_m=250.0,
                 min_len_m=2000.0, max_len_m=10000.0, detour=1.20, cost_per_km=1.0,
-                may_cross_danube=False)
+                may_cross_danube=False)   # street-routed trams use path lengths instead
 
 
 @dataclass
@@ -69,6 +69,10 @@ class NewLine:
     feed_reverse:  list[int] = field(default_factory=list)
     exit_reverse:  list[int] = field(default_factory=list)
     one_way:   bool = False
+    # street-routed lines: segment lengths along the street path [m] and the
+    # path itself (lat, lon) for maps; None -> straight segments x detour
+    seg_len_m: list[float] | None = None
+    path_latlon: np.ndarray | None = None
 
     @property
     def headway(self) -> float:
@@ -79,8 +83,16 @@ def _pair_dist(net: LineNetwork, a: int, b: int) -> float:
     return float(_haversine_m(net.hub_lat[a], net.hub_lon[a], net.hub_lat[b], net.hub_lon[b]))
 
 
+def segment_lengths(net: LineNetwork, line: NewLine) -> np.ndarray:
+    """Route length [m] of each inter-station segment."""
+    if line.seg_len_m is not None:
+        return np.asarray(line.seg_len_m, dtype=float)
+    return np.array([line.spec.detour * _pair_dist(net, a, b)
+                     for a, b in zip(line.hubs, line.hubs[1:])])
+
+
 def line_length_m(net: LineNetwork, line: NewLine) -> float:
-    return line.spec.detour * sum(_pair_dist(net, a, b) for a, b in zip(line.hubs, line.hubs[1:]))
+    return float(segment_lengths(net, line).sum())
 
 
 def line_cost(net: LineNetwork, line: NewLine) -> float:
@@ -90,8 +102,7 @@ def line_cost(net: LineNetwork, line: NewLine) -> float:
 def segment_times(net: LineNetwork, line: NewLine) -> np.ndarray:
     """In-vehicle times [s] between consecutive stations."""
     v = line.spec.speed_kmh / 3.6
-    return np.array([max(20.0, line.spec.detour * _pair_dist(net, a, b) / v)
-                     for a, b in zip(line.hubs, line.hubs[1:])])
+    return np.maximum(20.0, segment_lengths(net, line) / v)
 
 
 def find_segment(net: LineNetwork, route_id: str, from_hub: int, to_hub: int) -> int:
@@ -117,15 +128,18 @@ def add_lines(net: LineNetwork, lines: Sequence[NewLine]) -> LineNetwork:
         n_dep = net.window_s / line.headway
         for d, hubs in enumerate(dirs):
             idx = []
-            sub = replace(line, hubs=hubs)
-            for (a, b), t in zip(zip(hubs, hubs[1:]), segment_times(net, sub)):
+            lens = None if line.seg_len_m is None else (
+                list(line.seg_len_m) if d == 0 else list(line.seg_len_m)[::-1])
+            sub = replace(line, hubs=hubs, seg_len_m=lens)
+            for (a, b), t, ln in zip(zip(hubs, hubs[1:]), segment_times(net, sub),
+                                     segment_lengths(net, sub)):
                 idx.append(S0 + len(rid))
                 rid.append(f"NEW:{line.name}")
                 mode.append(line.spec.mode)
                 frm.append(a); to.append(b)
                 xy.append([net.hub_lat[a], net.hub_lon[a], net.hub_lat[b], net.hub_lon[b]])
                 n.append(int(round(n_dep))); freq.append(1.0 / line.headway); cv2.append(0.0)
-                tau.append(t); dist.append(line.spec.detour * _pair_dist(net, a, b))
+                tau.append(t); dist.append(float(ln))
             chains.append((idx, feeds[d], exits[d]))
     S = S0 + len(rid)
     succ = lil_matrix((S, S))
@@ -281,6 +295,77 @@ def first_round_gains(evaluator: MinPlusEvaluator, net: LineNetwork,
     """Relative efficiency gain of each candidate added alone."""
     e0 = evaluator.efficiency()
     return np.array([evaluator.gain(net, c, e0) for c in candidates])
+
+
+def generate_street_candidates(
+    net: LineNetwork,
+    weights: np.ndarray,
+    spec: ModeSpec,
+    endpoints: Sequence[int],
+    station_pool: np.ndarray,
+    router,
+    station_radius_m: float = 150.0,
+    max_detour: float = 1.6,
+) -> list[NewLine]:
+    """
+    Surface lines routed on a street (sub)graph (``bkk.streets.Router``).
+
+    Each endpoint pair is joined by the shortest street path; candidates whose
+    path is longer than ``max_detour`` times the straight distance or outside
+    the length limits are dropped.  Stations are pool hubs within
+    ``station_radius_m`` of the path, accepted by demand weight subject to the
+    spacing measured *along the path*; segment lengths are path distances.
+    """
+    from scipy.spatial import cKDTree
+    from .streets import project, unproject
+
+    G = router.graph
+    pool = np.asarray(station_pool)
+    px_h, py_h = project(net.hub_lat, net.hub_lon)
+    tree_pool = cKDTree(np.column_stack([px_h[pool], py_h[pool]]))
+    ends = [int(e) for e in endpoints if router.hub_node[e] >= 0]
+    out = []
+    mode_name = {1: "M", 0: "V"}.get(spec.mode, str(spec.mode))
+    for i, a in enumerate(ends):
+        dist, pred = router.paths_from(router.hub_node[a])
+        for b in ends[i + 1:]:
+            nb = router.hub_node[b]
+            L = dist[nb]
+            if not np.isfinite(L) or not (spec.min_len_m <= L <= spec.max_len_m):
+                continue
+            straight = np.hypot(px_h[a] - px_h[b], py_h[a] - py_h[b])
+            if L > max_detour * max(straight, 1.0):
+                continue
+            path = router.extract(pred, router.hub_node[a], nb)
+            if len(path) < 2:
+                continue
+            P = G.xy[path]
+            cum = np.r_[0.0, np.cumsum(np.hypot(*np.diff(P, axis=0).T))]
+            near = set()
+            for lst in tree_pool.query_ball_point(P, station_radius_m):
+                near.update(lst)
+            cand = pool[sorted(near)]
+            if len(cand):
+                ptree = cKDTree(P)
+                _, pos = ptree.query(np.column_stack([px_h[cand], py_h[cand]]))
+                along = dict(zip(cand.tolist(), cum[pos].tolist()))
+            else:
+                along = {}
+            along[a], along[b] = 0.0, float(cum[-1])
+            chosen = [a, b]
+            for h in sorted(along, key=lambda h: -weights[h]):
+                if h in (a, b):
+                    continue
+                if all(abs(along[h] - along[c]) >= spec.spacing_m for c in chosen):
+                    chosen.append(int(h))
+            order = sorted(chosen, key=lambda h: along[h])
+            pos_m = np.array([along[h] for h in order])
+            lat, lon = unproject(P[:, 0], P[:, 1])
+            out.append(NewLine(name=f"{mode_name}:{net.hub_name[a]}–{net.hub_name[b]}",
+                               spec=spec, hubs=order,
+                               seg_len_m=np.maximum(np.diff(pos_m), 1.0).tolist(),
+                               path_latlon=np.column_stack([lat, lon])))
+    return out
 
 
 def greedy_select(

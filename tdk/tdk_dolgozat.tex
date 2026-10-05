@@ -105,8 +105,9 @@ lineáris egyenletrendszerrel egzaktul megoldható. A 2026.~június~9-i reggeli
 csúcsra a modell a budapesti átszállóközpontok ismert sorrendjét adja.
 Igényekkel súlyozott hatékonysági mutatóval rangsoroljuk a csomópontok
 kritikusságát, majd megmutatjuk, hogy egy új vonal hatása min-plusz
-mátrixművelettel pontosan kiszámítható. Ezzel \NCAND{} jelölt metró- és
-villamosvonal közül mohó algoritmussal választjuk ki az egységnyi
+mátrixművelettel pontosan kiszámítható. A villamosvonalakat a GTFS-útvonalakból
+épített utcagráf főútvonalain vezetjük, a metrót egyenes alagútban. Ezzel
+\NCAND{} jelölt metró- és villamosvonal közül mohó algoritmussal választjuk ki az egységnyi
 építési költségre legnagyobb javulást hozó öt vonalat, és összevetjük őket a
 tervezett M5 metróval. Az eredményeket valós Budapest-térképeken mutatjuk be.
 
@@ -601,17 +602,49 @@ kombinált használatával. A tényleges javulásra a mohó algoritmus a
 költség aránya szerint választjuk, ami a költségkorlátos változat
 szokásos heurisztikája \citep{khuller1999}.
 
+\paragraph{Az úthálózat.}
+Egy villamosvonal csak olyan utcán vezethető, amelynek szélessége és
+burkolata ezt lehetővé teszi. Az úthálózatot a GTFS \texttt{shapes.txt}
+fájljából építjük fel, amely minden busz-, trolibusz- és villamosviszonylat
+pontos nyomvonalát tartalmazza.
+
+\begin{definicio}[Utcagráf és főútvonal]
+A nyomvonalakat $15$~m-enként mintavételezzük, és $40$~m-es négyzetrácsra
+illesztjük. A rácscellák a gráf csúcsai, egy nyomvonal egymást követő cellái
+közötti kapcsolatok az élei, az él hossza a cellaközéppontok távolsága.
+Egy él \emph{főútvonal}, ha villamos járja, vagy trolibusz járja, vagy
+legalább három különböző buszviszonylat használja.
+\end{definicio}
+
+A $40$~m-es rács egy sugárút két irányát és az azonos utcán futó
+viszonylatokat ugyanabba a cellába vonja össze. A gráf \SGNODES{} csúcsból
+áll és \SGALLKM{} km utcát fed le, ebből \SGMAINKM{} km főútvonal. A
+főútvonal-feltétel a jelentős nagyjárműforgalmat lebonyolító, széles utcákat
+emeli ki (Nagykörút, Rákóczi út, Váci út stb.), a csak egy-két
+buszviszonylattal kiszolgált mellékutcákat pedig kizárja. A Dunát villamos csak
+a mai villamoshidakon (Margit, Szabadság, Petőfi, Rákóczi, Árpád híd)
+keresztezheti; a többi hídon (\SGBRIDGE{} él, köztük a Lánchíd és az Erzsébet
+híd) a főútvonal-gráfból töröljük a dunai átkelést.
+
 \paragraph{Jelölt vonalak.}
 A végpontok a \NEND{} legnagyobb kiinduló igényű budapesti csomópont párjai.
-A két végpont közötti egyenes folyosóban az állomásokat igény szerinti
-sorrendben, a minimális állomástávolság betartásával választjuk ki
-(metró: $800$~m, $450$~m-es folyosó, $4$--$14$~km; villamos: $400$~m, $250$~m-es
-folyosó, $2$--$10$~km). A metró kereskedelmi sebessége $33$~km/h, követése
-$3$~perc, a villamosé $18$~km/h és $5$~perc. Villamos nem keresztezheti a Dunát.
-Az építési költség a vonalhosszal arányos; a metró kilométerköltségét a
-villamosénak \COSTRATIO-szeresére vesszük (érzékenység: $5$ és $20$). Az
-állomások meglévő csomópontokon vannak, és az igényt rögzítettnek tekintjük,
-vagyis a vonal hatása az eljutási idők javulásán keresztül jelenik meg.
+\emph{Villamosvonal} esetén a két végpontot a főútvonal-gráf legrövidebb útja
+köti össze; a jelöltet elvetjük, ha az út hossza kívül esik a $2$--$10$~km-es
+tartományon, vagy több mint $1{,}6$-szorosa a légvonalbeli távolságnak.
+Állomás lehet minden olyan csomópont, amely legfeljebb $150$~m-re van az
+útvonaltól (\SGTRAMHUBS{} ilyen csomópont van). Az állomásokat igény szerinti
+sorrendben, az útvonal mentén mért legalább $350$~m-es távolsággal
+választjuk ki, a szakaszhossz pedig az útvonal mentén mért távolság. A
+Rákóczi tér és a Széchenyi István tér közötti villamos például nem
+légvonalban, hanem a Nagykörúton és a Rákóczi úton halad:
+\EXROUTE{} (\EXLEN~km). \emph{Metróvonal} esetén a mélyvezetésű alagút
+független az utcahálózattól, ezért egyenes folyosót használunk ($800$~m-es
+állomástávolság, $450$~m-es folyosó, $4$--$14$~km, a hossz a légvonal
+$1{,}1$-szerese). A metró kereskedelmi sebessége $33$~km/h, követése $3$~perc,
+a villamosé $18$~km/h és $5$~perc. Az építési költség a vonalhosszal arányos;
+a metró kilométerköltségét a villamosénak \COSTRATIO-szeresére vesszük
+(érzékenység: $5$ és $20$). Az igényt rögzítettnek tekintjük, vagyis a vonal
+hatása az eljutási idők javulásán keresztül jelenik meg.
 
 % =============================================================================
 \section{Eredmények}
@@ -759,31 +792,33 @@ utas/óra: felszállások a reggeli csúcsban.}
 
 \paragraph{A javasolt vonalak.}
 Az alapesetben (a metró kilométerköltsége a villamosénak \COSTRATIO-szerese)
-mind az öt kiválasztott vonal villamos, mert a rövid, meglévő csomópontokat
-összekötő villamosvonalak egységnyi költségre több javulást hoznak, mint a
-metró. Az U1 (\ULENA~km) Kispest belső részét köti össze a Kőbánya-Kispest
-és a Határ út metróállomással. Az U2 a Keleti pályaudvarból a Damjanich
-utcán és a Városligeten át a Róbert Károly körútig, az U3 a Városliget keleti
-szélén át Zuglóig (Erzsébet királyné útja) vezet. Az U4 a Rákóczi tér --
-Astoria -- Deák Ferenc tér -- Széchenyi István tér útvonalon a Kiskörút
-hiányzó villamoskapcsolatát pótolja, az U5 pedig a Hősök terét a Nyugati
-pályaudvaron át a Kossuth Lajos térrel köti össze. A vonalakat a modell
-csúcsóránként $500$--$650$ felszállással terheli. A határnövekmények csökkenő
-sorrendje (\UGAINA\% után \UGAINE\%) a \ref{all:szubmod}.~állításban
-megfogalmazott csökkenő hozadéknak felel meg.
+mind az öt kiválasztott vonal villamos, és mindegyik meglévő főútvonalon
+halad (\ref{fig:newlines}.~ábra). Az U1 (\ULENA~km) Kispest belső utcáin a
+Kőbánya-Kispest és a Határ út metróállomást köti össze. Az U2 (\ULENB~km) a
+Hősök teréről a Damjanich utcán, a Bethlen Gábor téren és a Rottenbiller
+utcán át a Blaha Lujza térig és a Rákóczi térig vezet, vagyis a mai
+trolibuszfolyosón kapcsolja a Városligetet a Nagykörúthoz. Az U3
+(\ULENC~km) a Kálvin tér -- Astoria -- Deák Ferenc tér -- József nádor tér --
+Széchenyi István tér útvonalon a Kiskörút hiányzó villamoskapcsolatát
+pótolja. Az U4 (\ULEND~km) a Margit híd budai hídfőjétől a Margit körúton és
+a Széll Kálmán téren át a Városmajorig hosszabbítja meg a körúti tengelyt. Az
+U5 (\ULENE~km) Dél-Budán Kelenföldet köti össze Őrmezővel, Kelenvölggyel és
+Rózsavölggyel; a leghosszabb, és a legtöbb utast (\UBOARDE{} felszállás
+óránként) vonzza, de egységnyi költségre kisebb javulást ad. A
+határnövekmények csökkenő sorrendje (\UGAINA\% az első lépésben) a
+\ref{all:szubmod}.~állításban megfogalmazott csökkenő hozadéknak felel meg.
 
 \paragraph{Érzékenység és a metróvonalak.}
-Ha a metró kilométerköltsége csak a villamosénak ötszöröse, az első három
-villamos után két metróvonal következik: \RFIVENAMEA{} (\RFIVELENA~km,
+Ha a metró kilométerköltsége csak a villamosénak ötszöröse, a kiválasztásba
+három metróvonal is bekerül, köztük \RFIVENAMEA{} (\RFIVELENA~km,
 $+$\RFIVEGAINA\%) és \RFIVENAMEB{} (\RFIVELENB~km, $+$\RFIVEGAINB\%); a
-csomag együttes javulása ekkor \RFIVECUM\%. Az első metró nyomvonala
-gyakorlatilag a tervezett M5 belvárosi alagútja, vagyis a módszer a
-tervektől függetlenül is ezt a folyosót találja meg. Húszszoros költségaránynál
-a kiválasztás azonos az alapesettel. A költségtől eltekintve, tisztán a
-javulás szerint rangsorolva mind az öt vonal metró: \PGNAMEA{}
-($+$\PGGAINA\%), \PGNAMEB{} ($+$\PGGAINB\%) és \PGNAMEC{} ($+$\PGGAINC\%) az
-első három, együtt öt vonallal \PGCUM\%. A második ismét az M5
-folyosója, a Csepeli HÉV vonalán meghosszabbítva.
+csomag együttes javulása ekkor \RFIVECUM\%. Az első nyomvonala gyakorlatilag
+a tervezett M5 belvárosi alagútja, vagyis a módszer a tervektől függetlenül
+is ezt a folyosót találja meg. Húszszoros költségaránynál a kiválasztás
+azonos az alapesettel. Tisztán a javulás szerint rangsorolva mind az öt vonal
+metró: \PGNAMEA{} ($+$\PGGAINA\%), \PGNAMEB{} ($+$\PGGAINB\%) és \PGNAMEC{}
+($+$\PGGAINC\%) az első három, öt vonallal együtt \PGCUM\%. A második ismét
+az M5 folyosója, a csepeli HÉV vonalán meghosszabbítva.
 
 \paragraph{A tervezett M5.}
 Az M5 két belvárosi változatát (A: Lehel tér, B: Nyugati pályaudvar) a
@@ -824,7 +859,10 @@ keretben pedig az M5 folyosója a leghatékonyabb metróvonal.
     érvényes, időrendezett szorzattal.
   \item \textbf{Hálózatfejlesztés.} Az új vonalak állomásai meglévő
     csomópontokon vannak, az igény rögzített (nincs indukált forgalom), a
-    költség a hosszal arányos index, és a vonalak egyenes folyosókban futnak.
+    költség a hosszal arányos index. Az utcák alkalmasságát a meglévő
+    nagyjárműforgalom közelíti (főútvonal-feltétel); a tényleges
+    útszélességet, a közművek és a csomópontok kialakítását nem vizsgáljuk, a
+    metró pedig egyenes alagútban fut.
     Az eredmények ezért rangsorolásra és változatok összevetésére
     alkalmasak, nem beruházási döntésre.
 \end{itemize}
