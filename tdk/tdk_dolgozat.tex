@@ -119,10 +119,10 @@ vizsgált terv közül az M5 javítja legnagyobb mértékben a hálózatot
 dolgozatunkban azonosított integrációs hiányra ad választ. A Bajcsy-Zsilinszky
 úti villamos a legtöbb utast vonzó villamosterv, de az M3-mal párhuzamos
 nyomvonala miatt hatása az átszállásmentességben és a kapacitásban
-jelentkezik. A dél-budai villamostervek hatása a várható új lakóterületekkel
+jelentkezik. A dél-budai villamostervek utasszáma a várható új lakóterületekkel
 több mint kétszeresére nő. A tervek megvalósulása után a modell öt további,
-főútvonalakon vezetett villamosvonalat javasol, amelyek a tervektől független
-folyosókat szolgálnak ki.
+főútvonalakon vezetett villamosvonalat javasol, főként Pest sűrűn lakott
+belső-keleti kerületeiben és Zuglóban.
 
 \medskip\noindent
 \textbf{Kulcsszavak:} közösségi közlekedés, Markov-lánc, hálózati
@@ -445,10 +445,10 @@ indulások közötti követési idők négyzetes relatív szórása $\mathrm{CV}
 
 Az $s$ szakasz után következő $s'=(\ell,j,k)$ szakasz \emph{folytatási aránya}
 $r_{ss'}$ az $i\to j\to k$ útvonalon haladó és az $i\to j$ menetek számának
-hányadosa; $r_{s,\mathrm{vég}}=1-\sum_{s'}r_{ss'}$ a $j$-ben végállomáshoz
+hányadosa; $r_{s,\text{vég}}=1-\sum_{s'}r_{ss'}$ a $j$-ben végállomáshoz
 érő menetek aránya. A hálózat \NHUBS{} csomópontból és \NSEGS{}
 vonalszakaszból áll; az ablakban \NTRIPSEG{} menet--szakasz indulás történik.
-A korábbi dolgozatunk gráfjához (237$ csomópont, 914$ él) képest a
+A korábbi dolgozatunk gráfjához (237 csomópont, 914 él) képest a
 hálózat a HÉV-vonalakat is tartalmazza, az éleket pedig viszonylatonként
 (vonalszakaszonként) tartja nyilván, így a járművön maradás és a
 viszonylatonkénti gyakoriság is modellezhető. A követési idők szabályosak: a $\mathrm{CV}^2$ mediánja \MEDCVSQ, és a
@@ -496,7 +496,7 @@ kívüli állapotot $\dagger$ jelöli. A folytonos idejű láncok alapfogalmait
   s\;\to\;h' &: \quad \nu_s\,\beta_s\,p_{\mathrm{tr}}, && h'=\text{a } j \text{ csomópontja},
   \label{eq:transfer}\\
   s\;\to\;\dagger &: \quad \nu_s\,\beta_s\,(1-p_{\mathrm{tr}}),
-  && \beta_s=\alpha_s+(1-\alpha_s)\,r_{s,\mathrm{vég}} .
+  && \beta_s=\alpha_s+(1-\alpha_s)\,r_{s,\text{vég}} .
   \label{eq:exit}
 \end{align}
 Itt $\theta_s$ a beszállási ráta, $a_s\in(0,1]$ az elfogadási valószínűség,
@@ -695,7 +695,7 @@ A modell linearitása a kalibrációt is egyszerűvé teszi.
 
 \begin{allitas}
 \label{all:modresp}
-Legyen $B_{hm}=\sum_{s\in\Ss_h,\ \mathrm{mód}(s)=m}\theta_sa_s$ a $h$
+Legyen $B_{hm}=\sum_{s\in\Ss_h,\ \text{mód}(s)=m}\theta_sa_s$ a $h$
 csomópontból az $m$ mód szakaszaira való beszállás intenzitása, és
 $M=(-T)^{-1}B$ (csak a csomóponti sorokat tekintve). Ekkor az $m$ mód
 időegységenkénti felszállásainak várható száma
@@ -752,8 +752,8 @@ elérhető cél esetén a rendszer pontosan megoldható. A $|\delta_k|\le2$
 korlát azt jelenti, hogy $|\delta_k|\ell\le500$~m, azaz egy osztály
 hozzáférési előnye nem haladhatja meg a kötöttpályás és a buszos
 hozzáférési sugár különbségét. A becslés (megbízhatósági tartományos
-nemlineáris legkisebb négyzetek) eredménye: $\delta_{\mathrm{metró}}=\DELTAMETRO$
-(\DELTAMMETRO~m, a korláton), $\delta_{\mathrm{HÉV}}=\DELTAHEV$
+nemlineáris legkisebb négyzetek) eredménye: $\delta_{\text{metró}}=\DELTAMETRO$
+(\DELTAMMETRO~m, a korláton), $\delta_{\text{HÉV}}=\DELTAHEV$
 (\DELTAMHEV~m), $\delta_{\mathrm{villamos}}=\DELTATRAM$ (\DELTAMTRAM~m) és
 $\delta_{\mathrm{troli}}=\DELTATROLLEY$ (\DELTAMTROLLEY~m). A
 \ref{tab:modal}.~táblázat szerint a HÉV részesedése pontosan, a villamosé és
@@ -1098,18 +1098,19 @@ terhelésű szakaszok a négy metróvonalon vannak (legfeljebb \MAXSEGFLOW{} uta
   \label{fig:flow}
 \end{figure}
 
-A legforgalmasabb csomópontok sorrendje (Örs vezér tere, Széll Kálmán tér,
-Keleti pályaudvar, Móricz Zsigmond körtér, Kelenföld vasútállomás, Deák
-Ferenc tér) megfelel a budapesti átszállóközpontok ismert szerepének; a
-legnagyobb felszállásszám (\MAXHUBBOARD{} utas/óra) az Örs vezér terén
-adódott. A várakozók száma minden csomópontban Poisson-eloszlású, a relatív
+A legforgalmasabb csomópontok (Keleti pályaudvar, Örs vezér tere,
+Újpest-központ, Puskás Ferenc Stadion, Gyöngyösi utca, Kelenföld
+vasútállomás) mind metróállomások, és a sűrűn lakott kerületek
+átszállóközpontjai. A népességalapú igény tehát a lakótelepek melletti
+metróvégállomásokat emeli ki, az indulásarányos igény pedig inkább a
+belvárosi, sok viszonylatot kiszolgáló csomópontokat; a két forrásvektor
+csomóponti rangkorrelációja \SPEARDEP. A legnagyobb felszállásszám
+(\MAXHUBBOARD{} utas/óra) a Keleti pályaudvarnál adódott. A várakozók száma minden csomópontban Poisson-eloszlású, a relatív
 szórás a forgalmas csomópontokon is $15$--$30\%$. A felszállások
 \MSBBUS\%-a busz, \MSBTRAM\%-a villamos, \MSBTROLLEY\%-a trolibusz,
-\MSBHEV\%-a HÉV és \MSBMETRO\%-a metró. A metró részesedése alacsonyabb a
-valóságosnál, mert az indulásokkal arányos kiinduló igény a sűrű
-buszhálózatra teríti az utasokat; a térbeli \emph{sorrend} értelmes, az
-abszolút szintek kalibrálásához viszont igénymátrix kell
-(\ref{sec:korlat}.~fejezet).
+\MSBHEV\%-a HÉV és \MSBMETRO\%-a metró (\ref{tab:modal}.~táblázat). A metró
+részesedése a kalibráció ellenére is alacsonyabb a valóságosnál; ennek okát
+az \ref{sec:igeny}.~alfejezet és a \ref{sec:korlat}.~fejezet tárgyalja.
 
 \paragraph{Ellenőrzés, tranziens, érzékenység.}
 \MCN{} független utas egzakt szimulációja \citep{gillespie1977} szerint az
@@ -1166,13 +1167,13 @@ hatékonyságvesztesége.}
 \end{table}
 
 Az Örs vezér tere kiugró: bezárása a többi utazás hatékonyságát is
-$3{,}2\%$-kal rontja, mert itt csatlakozik a gödöllői HÉV, az M2 és a keleti
+$3{,}3\%$-kal rontja, mert itt csatlakozik a gödöllői HÉV, az M2 és a keleti
 busz- és villamoshálózat. A hálózati hatás nem azonos a forgalommal, a
 rangkorreláció \RHOTHRU: a Hűvösvölgy és a Határ út közepes forgalom mellett
 a második és harmadik, mert a budai hegyvidék, illetve a dél-pesti
 buszhálózat felé egyetlen átszállási pontként működik, a Deák Ferenc tér
 hálózati szerepét viszont a párhuzamos metróvonalak mérséklik.
-Megszakadáskor a belső metrócsomópontok kerülnek előre (\FAILNAMEA{}
+Megszakadáskor a nagy metrócsomópontok kerülnek előre (\FAILNAMEA{}
 \FAILNETA\%, \FAILNAMEB{} \FAILNETB\%, \FAILNAMEC{} \FAILNETC\%); a két
 forgatókönyv rangkorrelációja \RHOCF, vagyis az átszállóközpontok és a
 pályahálózat sérülékenysége két külön kérdés.
@@ -1182,7 +1183,7 @@ pályahálózat sérülékenysége két külön kérdés.
 A korábbi dolgozatunk közöttiség-alapú elemzése a Kálvin teret a hálózat
 egyik jelentős központjaként azonosította; a jelen modellben a Kálvin tér a
 bezárás hálózati hatása szerint a tíz legkritikusabb csomópont között van, és
-megszakadáskor a hetedik helyre lép előre. A korábbi elemzés szerint a belső
+megszakadáskor a nyolcadik. A korábbi elemzés szerint a belső
 kerületek hálózata sűrű és robusztus; ennek megfelelően a Deák Ferenc tér
 hálózati szerepét itt is a párhuzamos metróvonalak mérséklik. Az új modell
 ugyanakkor olyan pontokat is kiemel, amelyek a topológiai mutatókon nem
@@ -1317,6 +1318,18 @@ eljutási ideje a négy terv után \PKGPLES{} perc, Csepel elérhetősége
 \PKGDXXI\%-kal, Újbudáé \PKGDXI\%-kal, Budafok-Tétényé (XXII.)
 \PKGDXXII\%-kal nő.
 
+\paragraph{Érzékenység az igényre.}
+A tervek eljutási időit a másik két igényváltozattal is súlyoztuk. Az
+indulásarányos igénnyel ($W_{od}=w_ow_d$, $w_h\propto f_h$) az M5 hatása
+\RBDEPMFGAIN\%, a négy terv együtt \RBDEPPKGGAIN\%, vagyis az eredmények
+lényegében nem változnak. A kalibrált távolságfüggő gravitációs igénnyel
+(\ref{sec:igeny}.~alfejezet) a mutató a rövid utazásokra szűkül: az M5
+hatása \RBGRAVMFGAIN\%, a Budafoki úti villamosé \RBGRAVBUGAIN\%, a
+Bajcsy-Zsilinszky úti villamosé \RBGRAVBAJGAIN\%. Ilyenkor a villamostervek
+helyi hatása arányaiban nagyobb, de az M5 továbbra is a legnagyobb hatású
+terv. A tervek sorrendje tehát nem az igény választásán múlik, a hatások
+nagysága viszont attól függ, mekkora súlyt kapnak a hosszú utazások.
+
 % =============================================================================
 \section{Az eredmények illeszkedése a budapesti fejlesztésekhez}
 \label{sec:hozzajarulas}
@@ -1329,15 +1342,24 @@ utcagráf főútvonalain). Az egységnyi költségre legnagyobb javulást hozó 
 vonal (a \ref{tab:plans}.~táblázat alsó része és a \ref{fig:plans}.~ábra
 színes vonalai) mind villamos:
 \begin{itemize}
-  \item J1: \JNAMEA{} (\JLENA~km, $+$\JGAINA\%) Kispest belső utcáin,
-  \item J2: \JNAMEB{} (\JLENB~km, $+$\JGAINB\%) a Rottenbiller utcai
-    trolibuszfolyosón,
-  \item J3: \JNAMEC{} (\JLENC~km, $+$\JGAINC\%) a Margit körút folytatásaként,
-  \item J4: \JNAMED{} (\JLEND~km, $+$\JGAIND\%) a Kiskörút és a Rákóczi út
-    mentén,
-  \item J5: \JNAMEE{} (\JLENE~km, $+$\JGAINE\%) Dél-Budán, Kelenföldet Őrmezővel,
-    Kelenvölggyel és Rózsavölggyel összekötve.
+  \item J1: \JNAMEA{} (\JLENA~km, $+$\JGAINA\%) a Rottenbiller utca, az
+    István utca és az Izabella utca mentén, Erzsébetváros és Terézváros
+    belsejében,
+  \item J2: \JNAMEB{} (\JLENB~km, $+$\JGAINB\%) Józsefvároson át, a Teleki
+    téren, a Magdolna-negyeden és az Orczy téren keresztül,
+  \item J3: \JNAMEC{} (\JLENC~km, $+$\JGAINC\%) a Szövetség utcán, a Rózsák
+    terén és a Dózsa György úton,
+  \item J4: \JNAMED{} (\JLEND~km, $+$\JGAIND\%) Zugló keleti tengelyén, a
+    Nagy Lajos király útján, a Bosnyák téren és az Örs vezér terén át,
+  \item J5: \JNAMEE{} (\JLENE~km, $+$\JGAINE\%) a Dózsa György út
+    mentén, a Keleti pályaudvart a Városligettel és Angyalfölddel összekötve.
 \end{itemize}
+A vonalak a legsűrűbben lakott pesti kerületekben (VI--VIII., XIV.) futnak,
+ahol a népességalapú igény nagy, a kötöttpályás hálózat viszont csak sugárirányú
+(M1, M2, M4) vagy körirányú (Nagykörút); a javaslatok ezeket kötik össze
+harántirányban. A legnagyobb hatású és legtöbb utast vonzó vonal (J4,
+\JBOARDD{} felszállás óránként) Zugló belső területeit a Hungária körúti és
+az Örs vezér téri csomópontokhoz kapcsolja.
 A tervek és az öt további vonal együtt \AFTERGAIN\%-kal javítja a
 hatékonyságot az ép hálózathoz képest, a legrosszabb tized eljutási ideje
 \AFTERES{} perc. Újbuda elérhetősége ekkor \AFTDXI\%-kal, Budafok-Tétényé
@@ -1346,17 +1368,16 @@ hatékonyságot az ép hálózathoz képest, a legrosszabb tized eljutási ideje
 \subsection{Kiegészítik vagy helyettesítik a terveket a javaslatok?}
 
 A tervektől függetlenül futtatott keresés (\ref{sec:halozat}.~fejezet
-módszerével, az ép hálózaton) lényegében ugyanezt az öt folyosót találta meg:
-U1 \UNAMEA, U2 \UNAMEB, U3 \UNAMEC, U4 \UNAMED, U5 \UNAMEE. A tervek
-megvalósulása után ezek határnövekménye az eredetinek \INTUA, \INTUB, \INTUC,
-\INTUD, illetve \INTUE-szerese. Négy vonal hatását a tervek tehát nem
-befolyásolják: ezek olyan folyosókat szolgálnak ki (Kispest, a Városliget --
-Nagykörút kapcsolat, a budai körút folytatása, Dél-Buda belső
-lakótelepei), amelyeket a jelenlegi tervek nem érintenek. A Kálvin tér --
-Deák Ferenc tér -- Széchenyi István tér vonal (U3) hatása viszont
-\INTUC-szeresére csökken, mert a Bajcsy-Zsilinszky úti villamos és az M5
-ugyanezt a térséget szolgálja ki; a tervek után a modell a Kiskörúti
-kapcsolatot keletebbre, az Uránia felé tolja (J4).
+módszerével, az ép hálózaton) négy folyosót ugyanígy talált meg (U1--U4 =
+J1--J4), ötödikként pedig az U5 \UNAMEE{} vonalat (a Blaha Lujza téren, a
+Corvin-negyeden, a Boráros téren és a Soroksári úton át). A tervek
+megvalósulása után a határnövekmények az eredetinek \INTUA, \INTUB, \INTUC,
+\INTUD, illetve \INTUE-szeresei. Négy vonal hatását a tervek tehát nem
+befolyásolják: ezek olyan belső-pesti és zuglói folyosókat szolgálnak ki,
+amelyeket a jelenlegi tervek nem érintenek. Az U5 hatása viszont
+\INTUE-szeresére csökken, mert az M5 a Boráros tér -- Kálvin tér -- Astoria
+tengelyen ugyanezt a kapcsolatot adja; a tervek után a modell helyette a
+Dózsa György úti vonalat választja (J5).
 
 \subsection{Mit tud hozzátenni a modell a tervezéshez?}
 
@@ -1374,8 +1395,8 @@ kötött.
 \paragraph{Kölcsönhatások.}
 A min-plusz frissítés és a csökkenő hozadék miatt olcsón kiszámítható, hogy
 két fejlesztés erősíti vagy helyettesíti egymást. A dél-budai tervek
-egymást erősítik, a Kiskörúti villamoskapcsolat és a Bajcsy-Zsilinszky úti
-villamos részben helyettesítik egymást. Ez a tervezés sorrendjére is
+egymást erősítik, a Soroksári úti villamoskapcsolat (U5) és az M5 viszont
+nagyrészt helyettesítik egymást. Ez a tervezés sorrendjére is
 következtetést ad: a helyettesítő projektek közül elég az egyiket előre
 venni.
 
@@ -1384,7 +1405,7 @@ A dél-budai villamosok példája mutatja, hogy a modell lineáris szerkezete
 miatt a lakóterületi fejlesztések hatása forrásvektor-változásként egyszerűen
 beépíthető. A Budafoki úti villamos indoklásában szereplő $40\,000$ új lakó
 a modellben több mint kétszeresére növeli a dél-budai villamostervek
-utasszámát és hálózati hatását.
+utasszámát, hálózati hatásukat pedig \DEMGRATIO-szeresére.
 
 \paragraph{Sérülékenység a fejlesztések után.}
 A korábbi dolgozatunk sérülékeny pontjai közül Csepel integrációja az M5-tel
@@ -1454,18 +1475,22 @@ egyedüliként rövidíti a legrosszabb utazásokat, és Csepel elérhetőségé
 \PLMFDXXI\%-kal növeli, ami a korábban azonosított integrációs hiányra ad
 választ. A Bajcsy-Zsilinszky úti villamos sok utast vonz, de az M3-mal
 párhuzamos nyomvonala miatt értéke az átszállásmentességben, a kapacitásban
-és a redundanciában rejlik. A dél-budai villamostervek hatása a várható új
+és a redundanciában rejlik. A dél-budai villamostervek utasszáma a várható új
 lakóterületekkel több mint kétszeresére nő, és a két terv egymást erősíti
 (K3). A tervek megvalósulása után a modell öt további, főútvonalakon
-vezetett villamosvonalat javasol, amelyek közül négy a tervektől független
-folyosót szolgál ki, a Kiskörúti kapcsolat pedig a tervekhez igazodva
-módosul (K4).
+vezetett villamosvonalat javasol Pest sűrűn lakott belső-keleti
+kerületeiben és Zuglóban; ezek közül négy a tervektől független folyosót
+szolgál ki, a Soroksári úti kapcsolatot pedig az M5 helyettesíti (K4).
 
 A modell tehát a tervezés kiegészítő eszköze lehet: egységes keretben
 hasonlítja össze a fejlesztéseket, kimutatja kölcsönhatásaikat, beépíti a
 várható igényváltozást, és megmutatja, mi lehet a következő leghatékonyabb
-lépés. Az igényoldali adatok bevonásával ezek az eredmények abszolút
-utasszámokban is kalibrálhatók.
+lépés. A kiinduló igényt népességi adatokból, a módok szerinti utasforgalomhoz
+kalibrálva becsültük; a kalibráció azt is megmutatta, hogy a metró alacsony
+modellbeli részesedése az útvonalválasztás, nem pedig az igény térbeli
+eloszlásának következménye. A KSH kerületi ingázási és gépjármű-ellátottsági
+adataival, valamint célhoz kötött átszállásokkal az eredmények abszolút
+utasszámokban is pontosíthatók.
 
 % =============================================================================
 \renewcommand{\refname}{Hivatkozások}

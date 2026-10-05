@@ -22,7 +22,7 @@ OUT = Path("tdk/generated")
 def hu(x: float, nd: int = 1) -> str:
     """Hungarian number format: decimal comma, thin-space thousands."""
     s = f"{x:,.{nd}f}".replace(",", "X").replace(".", "{,}").replace("X", "\\,")
-    return s
+    return "\\ensuremath{-}" + s[1:] if s.startswith("-") else s
 
 
 def hui(x: float) -> str:
