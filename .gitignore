@@ -17,6 +17,9 @@ Thumbs.db
 # Downloaded GTFS and generated outputs
 data/*
 !data/.gitkeep
+!data/external/
+data/external/*
+!data/external/manual/
 tmp/
 
 # LaTeX build products

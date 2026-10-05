@@ -1,0 +1,10 @@
+# Budapest public transport trips by mode, 2022 (about 4.3 million trips per day).
+# Source: BKK figures as compiled in "Budapest tömegközlekedése" (hu.wikipedia.org),
+# retrieved via web search 2026-10-05; the primary BKK / KSH page could not be opened
+# from this environment. Verify against KSH STADAT 24.1.1.21 or the BKK report.
+mode,route_type,share
+busz,3,0.374
+villamos,0,0.270
+metró,1,0.256
+trolibusz,11,0.058
+HÉV,109,0.042
