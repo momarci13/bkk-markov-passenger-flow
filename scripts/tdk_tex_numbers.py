@@ -22,7 +22,7 @@ OUT = Path("tdk/generated")
 def hu(x: float, nd: int = 1) -> str:
     """Hungarian number format: decimal comma, thin-space thousands."""
     s = f"{x:,.{nd}f}".replace(",", "X").replace(".", "{,}").replace("X", "\\,")
-    return s
+    return "\\ensuremath{-}" + s[1:] if s.startswith("-") else s
 
 
 def hui(x: float) -> str:
@@ -105,12 +105,230 @@ def main() -> None:
     for k, rec in enumerate(tf[:3]):
         m[f"FAILNAME{'ABC'[k]}"] = rec["name"]
         m[f"FAILNET{'ABC'[k]}"] = hu(100 * rec["dE_net_failure"], 1)
+    ch = R["choice"]
+    m["CHACTIVE"] = hui(ch["active_hubs"])
+    m["CHMULTI"] = hui(ch["hubs_multi_segment"])
+    m["CHMULTIB"] = hu(100 * ch["boarding_share_multi_segment"], 1)
+    m["CHLINEB"] = hu(100 * ch["boarding_share_multi_line"], 1)
+    m["CHMODE"] = hui(ch["hubs_multi_mode"])
+    m["CHMODEB"] = hu(100 * ch["boarding_share_multi_mode"], 1)
+    m["DEAKZERO"] = hu(100 * ch["deak_metro_share_lambda0"], 0)
+    m["DEAKBASE"] = hu(100 * ch["deak_metro_share_base"], 0)
+    m["SUPPLYSHARE"] = hu(100 * R["supply_share_window"], 1)
+    m["NDAY"] = hu(R["base"]["params"]["n_day"] / 1e6, 1)
     if "modal_split" in R:
         ms = R["modal_split"]
         for mode, key in (("metró", "METRO"), ("busz", "BUS"), ("villamos", "TRAM"),
                           ("trolibusz", "TROLLEY"), ("HÉV", "HEV")):
             m[f"MSB{key}"] = hu(100 * ms[mode]["boardings_share"], 1)
             m[f"MSK{key}"] = hu(100 * ms[mode]["pkm_share"], 1)
+
+    scen = RES / "scenarios.json"
+    if scen.exists():
+        S = json.load(open(scen))
+        sg = S["street_graph"]
+        m["SGNODES"] = hui(sg["nodes"])
+        m["SGALLKM"] = hui(sg["all_km"])
+        m["SGMAINKM"] = hui(sg["main_km"])
+        m["SGTRAMHUBS"] = hui(sg["tram_station_hubs"])
+        m["SGBRIDGE"] = hui(sg["bridge_edges_removed"])
+        if S.get("example_route"):
+            m["EXROUTE"] = " -- ".join(S["example_route"]["stations"])
+            m["EXLEN"] = hu(S["example_route"]["length_km"], 2)
+        m["NCAND"] = hui(S["n_candidates"])
+        m["NCANDM"] = hui(S["n_metro"])
+        m["NCANDV"] = hui(S["n_tram"])
+        m["NEND"] = hui(S["endpoints"])
+        m["COSTRATIO"] = hu(S["cost_ratio"], 0)
+        m["PKGGAIN"] = hu(100 * S["package_gain_exact"], 2)
+        m["PKGGAINMP"] = hu(100 * S["package_gain_minplus"], 2)
+        for k, rec in enumerate(S["selected"]):
+            L = "ABCDE"[k]
+            m[f"UNAME{L}"] = f"{rec['from']} -- {rec['to']}"
+            m[f"UMODE{L}"] = rec["mode"]
+            m[f"UGAIN{L}"] = hu(100 * rec["marginal_gain"], 2)
+            m[f"ULEN{L}"] = hu(rec["length_km"], 1)
+            m[f"UBOARD{L}"] = hui(rec["boardings_ph"])
+            m[f"USECT{L}"] = hui(rec["max_section_ph"])
+        for v in ("A", "B"):
+            b5 = S["m5"][v]
+            m[f"MFGAIN{v}"] = hu(100 * b5["gain"], 2)
+            m[f"MFLEN{v}"] = hu(b5["length_km"], 1)
+            m[f"MFBOARD{v}"] = hui(b5["boardings_ph"])
+            m[f"MFSECT{v}"] = hui(b5["max_section_ph"])
+            m[f"MFRANK{v}"] = hui(S["m5_rank_gain_per_cost"][v])
+            m[f"MFGPC{v}"] = hu(1e4 * b5["gain_per_cost"], 2)
+        best = S["selected"][0]
+        m["UGPCA"] = hu(1e4 * best["gain_per_cost"], 2)
+        det = S["selection_detail"]
+        r5m = [r for r in det["ratio_5"] if r["mode"] == "metró"]
+        for k, r in enumerate(r5m[:2]):
+            L = "AB"[k]
+            m[f"RFIVENAME{L}"] = f"{r['from']} -- {r['to']}"
+            m[f"RFIVEGAIN{L}"] = hu(100 * r["marginal_gain"], 2)
+            m[f"RFIVELEN{L}"] = hu(r["length_km"], 1)
+        m["RFIVECUM"] = hu(100 * det["ratio_5"][-1]["cumulative_gain"], 2)
+        for k, r in enumerate(det["pure_gain"][:3]):
+            L = "ABC"[k]
+            m[f"PGNAME{L}"] = f"{r['from']} -- {r['to']}"
+            m[f"PGGAIN{L}"] = hu(100 * r["marginal_gain"], 2)
+            m[f"PGLEN{L}"] = hu(r["length_km"], 1)
+        m["PGCUM"] = hu(100 * det["pure_gain"][-1]["cumulative_gain"], 2)
+        ov = S["overlap_with_base"]
+        m["OVFIVE"] = hui(ov["ratio_5"])
+        m["OVTWENTY"] = hui(ov["ratio_20"])
+        m["OVPURE"] = hui(ov["pure_gain"])
+        rows = []
+        for rec in S["selected"]:
+            rows.append(f"{rec['name']} & {rec['mode']} & {rec['from']} -- {rec['to']} & "
+                        f"{len(rec['stations'])} & {hu(rec['length_km'], 1)} & "
+                        f"{hu(100 * rec['marginal_gain'], 2)} & "
+                        f"{hu(1e4 * rec['gain_per_cost'], 2)} & {hui(rec['boardings_ph'])} \\\\")
+        rows.append("\\midrule")
+        for v, lab in (("A", "M5 (A: Lehel tér)"), ("B", "M5 (B: Nyugati pu.)")):
+            b5 = S["m5"][v]
+            rows.append(f"{lab} & metró & Margit híd -- Közvágóhíd & {len(b5['stations'])} & "
+                        f"{hu(b5['length_km'], 1)} & {hu(100 * b5['gain'], 2)} & "
+                        f"{hu(1e4 * b5['gain_per_cost'], 2)} & {hui(b5['boardings_ph'])} \\\\")
+        with open(OUT / "table_lines.tex", "w") as f:
+            f.write("% generated by scripts/tdk_tex_numbers.py -- do not edit\n")
+            f.write("\n".join(rows) + "\n")
+
+    plans = RES / "plans.json"
+    if plans.exists():
+        P = json.load(open(plans))
+        m["ESZERO"] = hu(P["baseline"]["ES90_min"], 1)
+        tag = {"bajcsy": "BAJ", "budai_fonodo2": "BF", "budafoki": "BU", "m5": "MF"}
+        for k, t in tag.items():
+            r = P["plans"][k]
+            m[f"PL{t}GAIN"] = hu(100 * r["gain"], 2)
+            m[f"PL{t}GAINTHREE"] = hu(100 * r["gain"], 3)
+            m[f"PL{t}BOARD"] = hui(r["boardings_ph"])
+            m[f"PL{t}SECT"] = hui(r["max_section_ph"])
+            m[f"PL{t}LEN"] = hu(r["length_km"], 1)
+            m[f"PL{t}ES"] = hu(r["ES90_min"], 1)
+            m[f"PL{t}NST"] = hui(len(r["stations"]))
+            for d, dv in r["district"].items():
+                m[f"PL{t}D{d.split('.')[0]}"] = hu(100 * dv, 2)
+        m["PLBUSTATIONS"] = " -- ".join(P["plans"]["budafoki"]["stations"])
+        m["PLMFESDIFF"] = hu(P["baseline"]["ES90_min"] - P["plans"]["m5"]["ES90_min"], 1)
+        pk = P["package"]
+        m["PKGPLGAIN"] = hu(100 * pk["gain"], 2)
+        m["PKGPLSUM"] = hu(100 * pk["sum_of_parts"], 2)
+        m["PKGPLES"] = hu(pk["ES90_min"], 1)
+        for d, dv in pk["district"].items():
+            m[f"PKGD{d.split('.')[0]}"] = hu(100 * dv, 2)
+        ap = P["after_plans"]
+        m["AFTERGAIN"] = hu(100 * ap["gain_total_vs_E0"], 2)
+        m["AFTERES"] = hu(ap["ES90_min"], 1)
+        for d, dv in ap["district"].items():
+            m[f"AFTD{d.split('.')[0]}"] = hu(100 * dv, 2)
+        for k, r in enumerate(ap["selected"]):
+            L = "ABCDE"[k]
+            m[f"JNAME{L}"] = f"{r['from']} -- {r['to']}"
+            m[f"JLEN{L}"] = hu(r["length_km"], 1)
+            m[f"JGAIN{L}"] = hu(100 * r["marginal_gain"], 2)
+            m[f"JBOARD{L}"] = hui(r["boardings_ph"])
+        for r in P["interaction"]:
+            m["INTU" + "ABCDE"[int(r["name"][1:]) - 1]] = hu(r["ratio"], 2)
+        rows = []
+        lab = {"bajcsy": "Bajcsy-villamos", "budai_fonodo2": "Budai fonódó II.",
+               "budafoki": "Budafoki úti villamos", "m5": "M5 (B)"}
+        ends = {"bajcsy": "Lehel tér -- Deák Ferenc tér",
+                "budai_fonodo2": "Szent Gellért tér -- Dombóvári út",
+                "budafoki": "Dombóvári út -- Savoya Park",
+                "m5": "Margit híd -- Közvágóhíd"}
+        for k in ("bajcsy", "budai_fonodo2", "budafoki", "m5"):
+            r = P["plans"][k]
+            rows.append(f"{lab[k]} & {r['mode']} & {ends[k]} & {len(r['stations'])} & "
+                        f"{hu(r['length_km'], 1)} & {hu(100 * r['gain'], 2)} & "
+                        f"{hu(1e4 * r['gain_per_cost'], 2)} & {hui(r['boardings_ph'])} \\\\")
+        rows.append(f"\\textit{{A négy terv együtt}} & & & & & {hu(100 * pk['gain'], 2)} & & \\\\")
+        rows.append("\\midrule")
+        for r in ap["selected"]:
+            rows.append(f"{r['name']} & {r['mode']} & {r['from']} -- {r['to']} & "
+                        f"{len(r['stations'])} & {hu(r['length_km'], 1)} & "
+                        f"{hu(100 * r['marginal_gain'], 2)} & {hu(1e4 * r['gain_per_cost'], 2)} & "
+                        f"{hui(r['boardings_ph'])} \\\\")
+        with open(OUT / "table_plans.tex", "w") as f:
+            f.write("% generated by scripts/tdk_tex_numbers.py -- do not edit\n")
+            f.write("\n".join(rows) + "\n")
+    dem = RES / "plans_demand.json"
+    if dem.exists():
+        D = json.load(open(dem))
+        m["DEMRES"] = hui(D["new_residents"])
+        m["DEMEXTRA"] = hui(D["extra_boardings_ph"])
+        m["DEMCATCH"] = hui(D["catchment_hubs"])
+        m["DEMBTODAY"] = hui(D["scenarios"]["today"]["boardings_ph"])
+        m["DEMBFUT"] = hui(D["scenarios"]["2030"]["boardings_ph"])
+        m["DEMGTODAY"] = hu(100 * D["scenarios"]["today"]["gain"], 3)
+        m["DEMGFUT"] = hu(100 * D["scenarios"]["2030"]["gain"], 3)
+        m["DEMBRATIO"] = hu(D["boardings_ratio"], 1)
+        m["DEMGRATIO"] = hu(D["gain_ratio"], 1)
+
+    # ------------------------------------------------ population-based demand
+    dj = RES / "demand.json"
+    if dj.exists():
+        Dm = json.load(open(dj))
+        po, ac, nn, od = Dm["population"], Dm["access"], Dm["district_nnls"], Dm["od"]
+        m["POPCITY"] = hui(po["city"])
+        m["POPHRSL"] = hui(po["hrsl_city_raw"])
+        m["POPSCALE"] = hu(po["scale"], 3)
+        m["POPCOVER"] = hu(100 * po["covered_city_share"], 1)
+        for k, t in (("metró", "METRO"), ("HÉV", "HEV"), ("villamos", "TRAM"),
+                     ("trolibusz", "TROLLEY")):
+            m[f"DELTA{t}"] = hu(ac["delta"][k], 2)
+            m[f"DELTAM{t}"] = hui(ac["metres_equivalent"][k])
+            m[f"DELTAODDS{t}"] = hu(ac["odds_vs_bus"][k], 1)
+        m["NNLSGROUPS"] = hui(nn["n_groups"])
+        m["NNLSRANK"] = hui(nn["rank_G"])
+        m["NNLSRMSPRIOR"] = hu(100 * nn["rms_rel_prior"], 0)
+        m["NNLSRMSFREE"] = hu(100 * nn["rms_rel_unbounded"], 0)
+        m["NNLSRMSBOX"] = hu(100 * nn["rms_rel_box"], 0)
+        m["NNLSZERO"] = hui(nn["mu_unbounded_zero"])
+        m["NNLSMAX"] = hu(nn["mu_unbounded_max"], 1)
+        m["NNLSBOXB"] = hui(nn["mu_box_at_bounds"])
+        m["NNLSMETRO"] = hu(100 * nn["metro_share_unbounded"], 1)
+        m["GRAVBETA"] = hu(od["beta_per_min"], 3)
+        m["GRAVMEAN"] = hu(od["target_mean_min"], 1)
+        m["SPEARDEP"] = hu(Dm["spearman_rates_vs_departures"], 2)
+        m["OUTSHARE"] = hu(100 * Dm["outside_share_of_journeys"], 1)
+        ms = Dm["modal_split"]
+        tg = Dm["target_share"]
+        short = (("busz", "BUS"), ("villamos", "TRAM"), ("metró", "METRO"),
+                 ("trolibusz", "TROLLEY"), ("HÉV", "HEV"))
+        for k, t in short:
+            m[f"TGT{t}"] = hu(100 * tg[k], 1)
+            m[f"DEPMS{t}"] = hu(100 * ms["departures_prior"][k], 1)
+            m[f"POPMS{t}"] = hu(100 * ms["population_delta0"][k], 1)
+        rows = []
+        for lab, src in (("BKK, 2022 \\citep{bkkmodal}", tg),
+                         ("indulásarányos igény", ms["departures_prior"]),
+                         ("népesség, $\\delta=0$", ms["population_delta0"]),
+                         ("népesség, kalibrált $\\delta$", ms["calibrated"])):
+            rows.append(lab + " & " + " & ".join(hu(100 * src[k], 1) for k, _ in short) + " \\\\")
+        with open(OUT / "table_modal.tex", "w") as f:
+            f.write("% generated by scripts/tdk_tex_numbers.py -- do not edit\n")
+            f.write("\n".join(rows) + "\n")
+    if plans.exists() and "robustness" in P:
+        tag = {"bajcsy": "BAJ", "budai_fonodo2": "BF", "budafoki": "BU", "m5": "MF",
+               "package": "PKG"}
+        for v, vt in (("departures", "DEP"), ("population_gravity", "GRAV")):
+            rb = P["robustness"].get(v)
+            if rb is None:
+                continue
+            m[f"RB{vt}ESZERO"] = hu(rb["baseline_ES90_min"], 1)
+            for k, t in tag.items():
+                m[f"RB{vt}{t}GAIN"] = hu(100 * rb[k]["gain"], 2)
+                m[f"RB{vt}{t}ES"] = hu(rb[k]["ES90_min"], 1)
+    old = RES / "departures" / "plans.json"
+    if old.exists():
+        Po = json.load(open(old))
+        ap_o = Po["after_plans"]["selected"]
+        m["OLDJNAMES"] = "; ".join(f"{r['from']} -- {r['to']}" for r in ap_o)
+        m["OLDMFGAIN"] = hu(100 * Po["plans"]["m5"]["gain"], 2)
+        new_pairs = {frozenset((r["from"], r["to"])) for r in P["after_plans"]["selected"]}
+        m["JOVERLAP"] = hui(sum(frozenset((r["from"], r["to"])) in new_pairs for r in ap_o))
 
     with open(OUT / "numbers.tex", "w") as f:
         f.write("% generated by scripts/tdk_tex_numbers.py -- do not edit\n")

@@ -17,6 +17,9 @@ Thumbs.db
 # Downloaded GTFS and generated outputs
 data/*
 !data/.gitkeep
+!data/external/
+data/external/*
+!data/external/manual/
 tmp/
 
 # LaTeX build products
@@ -33,3 +36,5 @@ tmp/
 # Superseded drafts; the revised paper and presentation remain versioned.
 bp_markov.pdf
 prezi.pdf
+*.lof
+*.lot
