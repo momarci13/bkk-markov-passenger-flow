@@ -43,6 +43,9 @@ curl -L -o data/budapest_gtfs.zip \
   "https://storage.googleapis.com/storage/v1/b/mdb-latest/o/hu-budapest-budapesti-kozlekedesi-kozpont-bkk-gtfs-990.zip?alt=media"
 python scripts/tdk_analysis.py --date 20260609   # ~15 min, writes data/results/
 python scripts/tdk_scenarios.py                  # new metro/tram lines + planned M5 benchmark
+python scripts/tdk_plans.py                      # current Budapest plans (Bajcsy tram, Budai fonódó II,
+                                                 # Budafoki út tram, M5) + best lines after them
+python scripts/tdk_plans_demand.py               # 2030 South-Buda housing demand scenario
 python scripts/tdk_figures.py                    # Budapest maps (EOV), downloads geoBoundaries
 python scripts/tdk_tex_numbers.py                # LaTeX macros + table
 cd tdk && pdflatex tdk_dolgozat.tex && pdflatex tdk_dolgozat.tex

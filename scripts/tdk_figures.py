@@ -211,13 +211,78 @@ def fig_new_lines(districts, shapes):
     plt.close(fig)
 
 
+def fig_plans(districts, shapes):
+    """Current Budapest plans (dark) and the best additional lines after them."""
+    pl = pd.read_csv(RES / "plan_lines.csv")
+    P = json.load(open(RES / "plans.json"))
+    by_mode = shape_ids_by_mode()
+    metro = load_shapes(shape_ids=by_mode.get(1, set()))
+    hev = load_shapes(shape_ids=by_mode.get(109, set()))
+    tram = load_shapes(shape_ids=by_mode.get(0, set()))
+    fig, ax = plt.subplots(figsize=(6.3, 6.6))
+    draw_basemap(ax, districts, network_lines=shapes, labels=False)
+    ax.add_collection(LineCollection(tram, colors="#a9a7a1", linewidths=0.6, zorder=2.2))
+    ax.add_collection(LineCollection(hev, colors="#8e8c86", linewidths=0.9,
+                                     linestyles=(0, (4, 2)), zorder=2.3))
+    ax.add_collection(LineCollection(metro, colors="#8e8c86", linewidths=1.5, zorder=2.4))
+    allx, ally = [], []
+    plan_style = {"Bajcsy": ("Bajcsy", "-"), "BF2": ("BF II", "-"),
+                  "Budafoki": ("Budafoki út", "-"), "M5": ("M5", (0, (2.5, 1.5)))}
+    cols = ["#2a78d6", "#eb6834", "#1baf7a", "#eda100", "#e87ba4"]
+    jnames = [r["name"] for r in P["after_plans"]["selected"]]
+    for name, g in pl.groupby("line", sort=False):
+        path = g[g.station == 0].sort_values("order")
+        st = g[g.station == 1].sort_values("order")
+        px, py = eov(path.lon.values, path.lat.values)
+        sx, sy = eov(st.lon.values, st.lat.values)
+        allx += list(px); ally += list(py)
+        if name in plan_style:
+            lab, ls = plan_style[name]
+            col, lw = INK, (2.6 if name == "M5" else 2.0)
+        else:
+            lab, ls = name, "-"
+            col = cols[jnames.index(name) % len(cols)]
+            lw = 3.0 if g["mode"].iloc[0] == "metró" else 2.2
+        ax.plot(px, py, color="white", lw=lw + 1.8, solid_capstyle="round", zorder=4)
+        ax.plot(px, py, color=col, lw=lw, ls=ls, solid_capstyle="round", zorder=4.1)
+        ax.scatter(sx, sy, s=12, facecolor="white", edgecolor=col, lw=0.9, zorder=4.2)
+        off = {"M5": (-900, 350), "Bajcsy": (450, 450), "BF2": (-650, 250),
+               "Budafoki": (-650, -250)}.get(name, (450, 450))
+        ax.annotate(lab, xy=(sx[0], sy[0]), xytext=(sx[0] + off[0], sy[0] + off[1]),
+                    fontsize=7, fontweight="bold",
+                    color="white" if name in plan_style else INK, ha="center", va="center",
+                    zorder=5, arrowprops=dict(arrowstyle="-", color=col, lw=0.7),
+                    bbox=dict(boxstyle="round,pad=0.18",
+                              fc=INK if name in plan_style else "white", ec=col, lw=0.9))
+    pad = 1500.0
+    x0, x1 = min(allx) - pad, max(allx) + pad
+    y0, y1 = min(ally) - pad, max(ally) + pad
+    half = max(x1 - x0, y1 - y0) / 2
+    ax.set_xlim((x0 + x1) / 2 - half, (x0 + x1) / 2 + half)
+    ax.set_ylim((y0 + y1) / 2 - half, (y0 + y1) / 2 + half)
+    from matplotlib.lines import Line2D
+    handles = [Line2D([], [], color="#8e8c86", lw=1.5, label="meglévő metró"),
+               Line2D([], [], color="#8e8c86", lw=0.9, ls=(0, (4, 2)), label="meglévő HÉV"),
+               Line2D([], [], color=INK, lw=2.0, label="tervezett villamos"),
+               Line2D([], [], color=INK, lw=2.6, ls=(0, (2.5, 1.5)), label="tervezett M5"),
+               Line2D([], [], color="#2a78d6", lw=2.2, label="javaslat a tervek után")]
+    ax.legend(handles=handles, loc="lower right", frameon=True, fontsize=6.3,
+              labelcolor=INK2, facecolor="white", edgecolor="none", framealpha=0.9)
+    scale_bar(ax, km=2)
+    fig.savefig(OUT / "fig_plans.pdf", bbox_inches="tight")
+    fig.savefig(OUT / "fig_plans.png", dpi=170, bbox_inches="tight")
+    plt.close(fig)
+
+
 def main():
     OUT.mkdir(parents=True, exist_ok=True)
     districts = load_districts()
     shapes = load_shapes()
     fig_flow(districts, shapes)
     fig_critical(districts, shapes)
-    if (RES / "scenarios.json").exists():
+    if (RES / "plans.json").exists():
+        fig_plans(districts, shapes)
+    elif (RES / "scenarios.json").exists():
         fig_new_lines(districts, shapes)
 
 

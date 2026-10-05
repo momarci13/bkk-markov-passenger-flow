@@ -1,27 +1,26 @@
 % =============================================================================
 %  TDK-dolgozat (Budapesti Corvinus Egyetem, 2026/27)
-%  Vonalszintű nyílt Markov-hálózat a budapesti közösségi közlekedésre:
-%  utasáramlás, sérülékenység és hálózatfejlesztés
+%  A budapesti közösségi közlekedés utasáramlása és a tervezett
+%  hálózatfejlesztések: vonalszintű Markov-modell GTFS-adatok alapján
 %  Formai előírások: Times New Roman 12, 1,5-es sorköz, sorkizárt, 2,5 cm margó.
-%  Minden szám a scripts/tdk_analysis.py és scripts/tdk_scenarios.py
-%  futtatásából származik (BKK GTFS 2572.20260604, 2026. június 9., kedd).
+%  Minden szám a scripts/ könyvtár elemzéseiből származik (generated/numbers.tex).
 % =============================================================================
 \documentclass[12pt,a4paper]{article}
 
-% --- Kódolás és nyelv ---
 \usepackage[T1]{fontenc}
 \usepackage[utf8]{inputenc}
 \usepackage[magyar]{babel}
-
-% --- Tipográfia ---
-\usepackage{mathptmx}          % Times New Roman (szöveg és matematika)
+\usepackage{mathptmx}
 \usepackage{microtype}
 
-% --- Matematika ---
 \usepackage{amsmath}
 \usepackage{amssymb}
 \usepackage{amsthm}
 \usepackage{bm}
+
+% fejezetszámozás a korábbi dolgozat mintájára: I., II.1. ...
+\renewcommand{\thesection}{\Roman{section}}
+\renewcommand{\thesubsection}{\thesection.\arabic{subsection}}
 
 \newtheorem{tetel}{Tétel}[section]
 \newtheorem{lemma}[tetel]{Lemma}
@@ -32,29 +31,34 @@
 \theoremstyle{remark}
 \newtheorem{megjegyzes}[tetel]{Megjegyzés}
 
-% --- Ábrák és táblázatok ---
 \usepackage{graphicx}
 \usepackage{float}
 \usepackage[section]{placeins}
 \usepackage{booktabs}
 \usepackage{caption}
-\captionsetup{font=small,labelfont=bf,labelsep=period}
+\captionsetup{font=small,labelsep=period}
 \captionsetup[figure]{name=ábra}
 \captionsetup[table]{name=táblázat}
 
-% --- Linkek, oldal ---
-\usepackage[hidelinks,unicode]{hyperref}
+\usepackage[colorlinks=true,linkcolor=black,citecolor=black,urlcolor=black]{hyperref}
 \usepackage[margin=2.5cm]{geometry}
 \usepackage{setspace}
 \onehalfspacing
 \usepackage{enumitem}
 \setlist{itemsep=2pt,topsep=4pt}
 \usepackage{xcolor}
-\usepackage{url}
+\usepackage{xurl}
+\usepackage[normalem]{ulem}
 \usepackage[round,authoryear]{natbib}
 \usepackage{csquotes}
+\usepackage{tocloft}
+\setlength{\cftsecnumwidth}{2.6em}
+\setlength{\cftsubsecindent}{2.6em}
+\setlength{\cftsubsecnumwidth}{3.4em}
+\setcounter{tocdepth}{2}
+\renewcommand{\cftsecleader}{\cftdotfill{\cftdotsep}}
+\usepackage{amssymb}
 
-% --- A futtatásból származó számok (scripts/tdk_tex_numbers.py generálja) ---
 \input{generated/numbers}
 
 \hyphenation{va-ló-szí-nű-sé-gi cso-mó-pont cso-mó-pon-tok vo-nal-sza-kasz}
@@ -68,74 +72,87 @@
 \newcommand{\Ls}{\mathcal{L}}
 
 \begin{document}
-\renewcommand{\abstractname}{Összefoglaló}
 
 % ------------------------------------------------------------------ címlap --
 \begin{titlepage}
   \centering
-  {\large Budapesti Corvinus Egyetem}\\[2pt]
-  {Tudományos Diákköri Konferencia, 2026.~őszi félév}\\[2pt]
-  {[Szekció neve]}\\[3.5cm]
-  {\LARGE\bfseries Vonalszintű nyílt Markov-hálózat\\[4pt]
-   a budapesti közösségi közlekedésre\par}
-  \vspace{0.8cm}
-  {\large Utasáramlás, sérülékenység és hálózatfejlesztés\\
-   a BKK nyilvános menetrendi adatai alapján\par}
-  \vfill
+  {\large Budapesti Corvinus Egyetem\par}
+  \vspace{5cm}
+  {\large\bfseries A budapesti közösségi közlekedés utasáramlása és a tervezett
+   hálózatfejlesztések: vonalszintű Markov-modell GTFS-adatok alapján\par}
+  \vspace{3.5cm}
   \begin{flushright}
-    \textbf{Szerző:} Molnár Marcell, [szak, évfolyam]\\
-    \textbf{Témavezető:} [Témavezető neve, beosztása, tanszéke]
+    Szerző:\\
+    Molnár Marcell ([évfolyam])\\[10pt]
+    Szak: Gazdaság- és pénzügy-matematikai elemzés\\[10pt]
+    Témavezető neve: [Témavezető neve]
   \end{flushright}
-  \vspace{1.5cm}
-  Budapest, 2026
+  \vfill
+  2026.
 \end{titlepage}
 
-% -------------------------------------------------------------- összefoglaló --
-\begin{abstract}
-\noindent
+\tableofcontents
+\clearpage
+\listoffigures
+\listoftables
+\clearpage
+
+% ------------------------------------------------------------------- absztrakt --
+\section*{Absztrakt}
+\addcontentsline{toc}{section}{Absztrakt}
+
 A dolgozat a BKK nyilvános GTFS-menetrendjéből folytonos idejű Markov-modellt
-épít a budapesti közösségi közlekedés utasáramlására. Az utas vagy egy
-átszállási csomópontban vár, vagy egy vonalszakaszon utazik; a beszállási
-ráta a menetrendi követési idők első két momentumához illeszkedik, a
-viszonylatválasztás a minimális relatív entrópia elvéből következik, és ezt a
-Poisson-folyamatok ritkítása pontosan megvalósítja. Független
-Poisson-beáramlás mellett a foglaltságok minden időpontban független
-Poisson-eloszlásúak, az utazási idő fázistípusú, így a modell egyetlen ritka
-lineáris egyenletrendszerrel egzaktul megoldható. A 2026.~június~9-i reggeli
-csúcsra a modell a budapesti átszállóközpontok ismert sorrendjét adja.
-Igényekkel súlyozott hatékonysági mutatóval rangsoroljuk a csomópontok
-kritikusságát, majd megmutatjuk, hogy egy új vonal hatása min-plusz
-mátrixművelettel pontosan kiszámítható. A villamosvonalakat a GTFS-útvonalakból
-épített utcagráf főútvonalain vezetjük, a metrót egyenes alagútban. Ezzel
-\NCAND{} jelölt metró- és villamosvonal közül mohó algoritmussal választjuk ki az egységnyi
-építési költségre legnagyobb javulást hozó öt vonalat, és összevetjük őket a
-tervezett M5 metróval. Az eredményeket valós Budapest-térképeken mutatjuk be.
+épít a budapesti közösségi közlekedés utasáramlására, és ezzel értékeli a
+főváros jelenleg előkészítés vagy megvalósítás alatt álló kötöttpályás
+fejlesztéseit. A modellben az utas vagy egy átszállási csomópontban vár, vagy
+egy vonalszakaszon utazik; a beszállási ráta a menetrendi követési idők első
+két momentumához illeszkedik, a viszonylatválasztás a minimális relatív
+entrópia elvéből következik. Független Poisson-beáramlás mellett a
+foglaltságok független Poisson-eloszlásúak, így a modell egzaktul megoldható.
+A hálózatot igényekkel súlyozott hatékonysággal, csomópontonkénti
+elérhetőséggel és az eljutási idők Expected Shortfall mutatójával jellemezzük,
+egy új vonal hatását pedig pontos min-plusz frissítéssel számoljuk. A négy
+vizsgált terv közül az M5 javítja legnagyobb mértékben a hálózatot
+($+$\PLMFGAIN\%), és Csepel elérhetőségét \PLMFDXXI\%-kal növeli, ami a korábbi
+dolgozatunkban azonosított integrációs hiányra ad választ. A Bajcsy-Zsilinszky
+úti villamos a legtöbb utast vonzó villamosterv, de az M3-mal párhuzamos
+nyomvonala miatt hatása az átszállásmentességben és a kapacitásban
+jelentkezik. A dél-budai villamostervek hatása a várható új lakóterületekkel
+több mint kétszeresére nő. A tervek megvalósulása után a modell öt további,
+főútvonalakon vezetett villamosvonalat javasol, amelyek a tervektől független
+folyosókat szolgálnak ki.
 
 \medskip\noindent
-\textbf{Kulcsszavak:} folytonos idejű Markov-lánc, nyílt sorbanállási hálózat,
-minimális relatív entrópia, hálózati sérülékenység, hálózattervezés,
-szubmoduláris optimalizálás, GTFS.
-\end{abstract}
+\textbf{Kulcsszavak:} közösségi közlekedés, Markov-lánc, hálózati
+sérülékenység, Expected Shortfall, hálózatfejlesztés, Budapest, GTFS.
 
-\newpage
-\tableofcontents
-\newpage
+\clearpage
 
 % =============================================================================
 \section{Bevezetés}
 \label{sec:bev}
 
 A BKK járatain munkanaponként átlagosan $3{,}4$~millió felszállás történik
-\citep{bkk2024}. A térben és időben felbontott utasforgalom (hány utas vár egy
-csomópontban, mekkora a terhelés egy vonalszakaszon) nyilvános adatokból
-közvetlenül nem figyelhető meg: a menetrend GTFS formátumban szabadon
-elérhető, az utasszámláló és jegyadatok viszont nem. Ebből a helyzetből
-természetesen adódik egy olyan valószínűségi modell, amely a menetrend által
-meghatározott kínálatból és néhány átlátható feltevésből vezeti le az
-áramlásokat. Egy ilyen modell kiindulópontot ad a mért adatok későbbi
-beépítéséhez, alkalmas a hálózat szerkezeti sérülékenységének vizsgálatára,
-és lehetővé teszi, hogy hálózatfejlesztési változatokat egységes keretben
-hasonlítsunk össze.
+\citep{bkk2024}. Budapest közösségi közlekedése jelentős átalakulás előtt
+áll: a Budai fonódó villamoshálózat második ütemének kivitelezése 2026 őszén
+kezdődhet, a Bajcsy-Zsilinszky úti villamos és a Budafoki úti villamos
+tervezése folyik, az M5 regionális gyorsvasút előkészítése pedig évek óta
+napirenden van. A projektek indoklása jellemzően projektszintű: utasszámokat,
+átszállási időmegtakarítást és költség--haszon mutatókat közöl. Kevésbé
+látható, hogyan hatnak a fejlesztések a teljes hálózatra, mennyire erősítik
+vagy helyettesítik egymást, és mi lenne a következő leghatékonyabb lépés, ha
+megvalósulnak.
+
+Korábbi dolgozatunkban \citep{molnar2026} a budapesti hálózat centralitását,
+robusztusságát és sérülékenységét vizsgáltuk a GTFS-adatokból épített gráfon.
+Az elemzés azonosította a hálózat legsérülékenyebb pontjait (a repülőtéri
+kapcsolatot, Csepel gyenge integrációját, a Kálvin tér központi szerepét),
+ugyanakkor korlátként jelölte meg, hogy utasforgalmi adatok hiányában a
+kiesések miatti átterelődés nem volt modellezhető, a HÉV-vonalak hiányoztak,
+és az átszállási idők sem szerepeltek. A jelen dolgozat ezt a munkát
+folytatja: a topológiai elemzést valószínűségi utasáramlási modellel váltja
+fel, amely a menetrendből becsli a várakozást, a járművön maradást és az
+átszállást, és amelyben egy új vonal hatása pontosan kiszámítható.
 
 \paragraph{Kutatási kérdések.}
 \begin{enumerate}[label=K\arabic*.]
@@ -143,57 +160,145 @@ hasonlítsunk össze.
     utasáramlási modell, amely valószínűség-elméletileg következetes, és a
     teljes budapesti hálózaton egzaktul megoldható?
   \item Mely csomópontok kiesése rontja leginkább a hálózat teljesítményét,
-    és ez mennyiben tér el a csomópontok forgalmától?
-  \item Mely új metró- vagy villamosvonalak javítanák a legtöbbet a
-    hálózaton egységnyi építési költségre, és ehhez képest hol helyezkedik el
-    a tervezett M5 metró?
+    és hogyan viszonyul ez a korábbi, topológiai eredményekhez?
+  \item Hogyan változtatják meg a hálózat eljutási idejeit, elérhetőségét és
+    legrosszabb utazásait a jelenleg tervezett fejlesztések (Bajcsy-Zsilinszky
+    úti villamos, Budai fonódó II., Budafoki úti villamos, M5), és mennyire
+    erősítik egymást?
+  \item Mely további vonalak hoznák a legnagyobb javulást egységnyi
+    költségre a tervek megvalósulása után, és mit tud hozzátenni a modell a
+    folyamatban lévő tervezéshez?
 \end{enumerate}
 
-\paragraph{Hozzájárulások.}
-\begin{enumerate}[label=(\roman*)]
-  \item Vonalszintű nyílt Markov-hálózat, amelyben a beszállási ráta a
-    követési idő első két momentumához illeszkedik, a viszonylatválasztás
-    pedig a minimális relatív entrópia elvéből következik.
-  \item Egzakt megoldás: a foglaltságok független Poisson-eloszlásúak, az
-    utazási idő fázistípusú eloszlású.
-  \item Igényekkel súlyozott, várható időkön alapuló sérülékenységi mutató,
-    amely elkülöníti egy csomópont bezárásának közvetlen és hálózati hatását.
-  \item Egy új vonal hatásának pontos, min-plusz alakú kiszámítása, amely
-    lehetővé teszi több ezer jelölt vonal kiértékelését és mohó kiválasztását.
-  \item Nyílt, reprodukálható Python-megvalósítás, amely a dolgozat minden
-    számát, ábráját és táblázatát előállítja.
-\end{enumerate}
-
-A dolgozat felépítése a következő. A \ref{sec:irodalom}.~fejezet a kapcsolódó
-irodalmat, a \ref{sec:adat}.~fejezet az adatokat és a hálózatot, a
-\ref{sec:modell}.~fejezet a modellt, a \ref{sec:megoldas}.~fejezet az egzakt
-megoldást mutatja be. A \ref{sec:halozat}.~fejezet a sérülékenységi és a
-hálózatfejlesztési módszert ismerteti, a \ref{sec:eredmeny}.~fejezet az
-eredményeket, a \ref{sec:korlat}.~fejezet a korlátokat tárgyalja.
+A dolgozat felépítése a következő. A \ref{sec:irodalom}.~fejezet a
+szakirodalmat és a budapesti tervdokumentumokat tekinti át. A
+\ref{sec:adat}.~fejezet az adatokat és a hálózatot, a \ref{sec:modell}. és a
+\ref{sec:megoldas}.~fejezet a modellt és annak egzakt megoldását, a
+\ref{sec:halozat}.~fejezet a hálózati mutatókat és a fejlesztések
+modellezését ismerteti. A \ref{sec:eredmeny}.~fejezet a jelenlegi hálózatra,
+a \ref{sec:tervek}.~fejezet a tervezett fejlesztésekre vonatkozó eredményeket
+mutatja be, a \ref{sec:hozzajarulas}.~fejezet azt tárgyalja, hogyan
+illeszkednek az eredmények a budapesti fejlesztési folyamatba. A
+\ref{sec:korlat}.~fejezet a korlátokat, a \ref{sec:kovetkeztetes}.~fejezet a
+következtetéseket foglalja össze.
 
 % =============================================================================
-\section{Kapcsolódó irodalom}
+\section{Szakirodalmi áttekintés}
 \label{sec:irodalom}
 
-\paragraph{Entrópia és forgalomeloszlás.}
+A dolgozat három szakirodalmi hagyományra épít: a komplex hálózatok
+ellenállóképességének vizsgálatára, a közösségi közlekedési utasáramlás
+valószínűségi modellezésére, valamint a hálózattervezés és az elérhetőség
+mérésének irodalmára. Ezek mellé negyedikként a budapesti
+közlekedésfejlesztési tervdokumentumok kerülnek, mert a dolgozat egyik célja
+éppen az, hogy eredményeit ezekhez viszonyítsa. Az áttekintést a saját korábbi
+munkánkkal kezdjük, mert a jelen dolgozat annak közvetlen folytatása.
+
+\subsection{Előzmény: a budapesti hálózat centralitása és sérülékenysége}
+
+\citet{molnar2026} a budapesti közösségi közlekedési hálózatot a GTFS-adatokból
+épített irányított, utazási idővel súlyozott gráfként vizsgálták
+($2237$ csomópont, $4914$ él). Öt centralitásmutató (fokszám-, közelség-,
+közöttiség-, Katz- és PageRank-centralitás) szerinti célzott és véletlen
+csomópont-eltávolításokkal megmutatták, hogy a hálózat a véletlen
+kiesésekkel szemben viszonylag stabil, a célzott támadásokra azonban
+érzékeny, és a sérülékeny pontokat a közöttiség-centralitás azonosítja a
+leghatékonyabban. A közöttiség felső tizedéből és a köztük futó legrövidebb
+utakból funkcionális gerinchálózatot képeztek, amelyet az AlphaCore-eljárással
+\citep{zhu2024} tovább szűkítettek. A sérülékenységet a pénzügyi
+kockázatkezelésből átvett Expected Shortfall (ES) mutatóval mérték
+csomópont körüli élkiesésekre, csomópontkiesésekre és élkiesésekre.
+Fő megállapításaik: a legsérülékenyebb pont a Liszt Ferenc Repülőtér és az
+oda vezető útvonal; Csepel tömegközlekedési hálózata nem integrálódik
+megfelelően a budapesti rendszerbe; a Kálvin tér a hálózat egyik jelentős
+központja; a belső kerületek hálózata sűrű és robusztus, a külső kerületeké
+sérülékenyebb.
+
+A dolgozat korlátként jelölte meg, hogy (i) nem állt rendelkezésre adat az
+utasok kiinduló- és célállomásáról, illetve az útvonalak terheléséről, ezért
+a kiesések miatt átterelődő utasforgalom nem volt modellezhető; (ii) a HÉV- és
+vasútvonalak hiányoztak az elemzésből; (iii) az átszállási időket nem vették
+figyelembe. A jelen dolgozat mindhárom pontra választ keres: valószínűségi
+modellel becsüli a terhelést, a HÉV-vonalakat a hálózat részeként kezeli, a
+várakozást és az átszállást pedig a menetrendből származtatott
+várakozási időkkel modellezi. Ezzel a korábbi, tisztán topológiai
+megközelítést utasáramlási alapra helyezi, és lehetővé teszi, hogy
+fejlesztési változatokat is értékeljünk.
+
+\citet{qasseer2025} a budapesti közösségi közlekedési hálózat centralitásának
+városszerkezeti hatását vizsgálta $5624$ csomópontos gráfon. A legmagasabb
+fokszám- és közöttiség-centralitású helyek a Nagykörút, a Hungária körút és
+a hozzájuk csatlakozó sugárutak mentén helyezkednek el, a közelség- és
+egyenesség-centralitás pedig a Duna két partja közötti különbséget mutatja: a
+pesti oldal szabályosabb utcahálózata egyenletesebb elérhetőséget biztosít,
+mint a dombos budai oldal. A tanulmány szerint a hálózat elemzésével
+azonosíthatók a jövőbeli városközpontok, illetve a nem kellően fejlett
+központok, vagyis a hálózatelemzés a várostervezés eszköze lehet. Ez a
+gondolat a jelen dolgozat fejlesztési fejezeteinek kiindulópontja is.
+
+\citet{gaal2014} termelési függvénnyel értékelték a budapesti közösségi
+közlekedés teljesítményét, és utaskilométerben mért csökkenő teljesítményt
+találtak. Ez a makroszintű megközelítés kiegészíti a hálózati szintű
+vizsgálatot: a jelen dolgozat azt mutatja meg, hol és mely beavatkozások
+javíthatnak a hálózat teljesítményén.
+
+\subsection{Hálózatok ellenállóképessége és közlekedési sérülékenység}
+
+\citet{albert2000} alapvető eredménye, hogy a skálafüggetlen hálózatok a
+véletlen hibákkal szemben ellenállók, a legnagyobb fokszámú csúcsok célzott
+eltávolítására azonban gyorsan szétesnek. \citet{latora2001} bevezette a
+hálózati hatékonyságot, a csúcspárok közötti legrövidebb utak reciprokának
+átlagát, amely a széteső gráfokra is értelmezett, ezért a sérülékenységi
+vizsgálatok egyik standard mértéke lett. A közösségi közlekedési hálózatok
+empirikus szerkezetét \citet{vonferber2009} és \citet{derrible2010}
+elemezte nagyvárosok összehasonlításával: a hálózatok jellemzően
+kisvilág-tulajdonságúak, a metróhálózatok szerkezete pedig néhány jól
+mérhető mutatóval leírható.
+
+A közlekedési sérülékenység irodalmát \citet{mattsson2015} tekinti át,
+hangsúlyozva, hogy a topológiai mutatók mellett az utasforgalommal súlyozott,
+következményalapú mértékek adnak döntéstámogatásra alkalmas eredményt.
+\citet{rodriguez2014} a madridi metróhálózaton a kapcsolatok kiesésének
+hatását az utazási idők és az érintett utasok számának változásával mérték.
+\citet{cats2014} dinamikus, utasforgalommal súlyozott sérülékenységi
+elemzést adott, és megmutatta, hogy a valós idejű utastájékoztatás mérsékli
+a kiesések hatását. A jelen dolgozat ebbe az irányba lép tovább a korábbi
+topológiai elemzéshez képest: a hatékonyságot az utazási igénnyel súlyozzuk,
+a legrövidebb utakat pedig a menetrendből számolt várható várakozási és
+menetidőkből határozzuk meg.
+
+\subsection{Kockázati mértékek: Expected Shortfall}
+
+Az Expected Shortfall egy veszteségeloszlás legrosszabb $(1-\alpha)$ hányadának
+átlaga. \citet{acerbi2002} megmutatta, hogy a kockáztatott értékkel (VaR)
+szemben koherens kockázati mérték, \citet{rockafellar2000} pedig lineáris
+programozási alakját adta meg. Hálózati alkalmazásra \citet{koczy2022}
+példája szolgál: az európai gázhálózat ellátásbiztonságát az ES-sel sűrítették
+egyetlen, országonkénti mutatóba, a meghibásodási forgatókönyvek legrosszabb
+tizedének átlagával. A korábbi dolgozatunk ezt a megközelítést vitte át a
+közlekedési hálózatra. A jelen dolgozatban az ES-t az igényekkel súlyozott
+eljutási idők eloszlására alkalmazzuk: azt mérjük, milyen hosszúak a
+legrosszabb tized utazásai, és hogyan rövidítik ezeket a tervezett fejlesztések.
+
+\subsection{Az utasáramlás modellezése}
+
 \citet{wilson1969} a gravitációs forgalomeloszlási modellt az entrópia
 maximalizálásából vezette le: adott átlagos költség mellett a legkevésbé
 elkötelezett eloszlás exponenciálisan bünteti a költséget.
 \citet{snickars1977} ezt a~priori súlyokkal általánosította (minimális
-információ, illetve relatív entrópia elve); ezt az általánosítást
-alkalmazzuk a viszonylatválasztásra, ahol az a~priori súlyt a menetrendi
-gyakoriság adja.
+információ, illetve relatív entrópia elve), amelyet a jelen dolgozat a
+viszonylatválasztásra alkalmaz. A közös vonalak problémájában
+\citep{chriqui1975} az utas a vonzó viszonylatok közül az elsőként érkező
+járműre száll fel, így a vonalak választási valószínűsége a gyakoriságukkal
+arányos; \citet{spiess1989} optimális stratégiákra épülő ráterhelési modellje
+ma is a menetrendalapú tervezés alapja. A várakozási idő elméletét
+\citet{larson1981} foglalja össze: véletlenszerűen érkező utasnál a várakozás a
+követési idő maradék élettartama, ezért várható értéke a követési idő
+szórásától is függ. A közösségi közlekedés tervezésének és üzemeltetésének
+klasszikus kézikönyve \citet{vuchic2005}.
 
-\paragraph{Gyakoriságalapú ráterhelés és várakozási idő.}
-A közös vonalak problémájában \citep{chriqui1975} az utas a vonzó
-viszonylatok közül az elsőként érkező járműre száll fel, így a vonalak
-választási valószínűsége a gyakoriságukkal arányos. \citet{spiess1989}
-optimális stratégiákra épülő ráterhelési modellje ma is a menetrendalapú
-tervezés alapja. Véletlenszerűen érkező utas esetén a várakozás a követési
-idő maradék élettartama, amelynek várható értéke a követési idő négyzetes
-relatív szórásától függ \citep{larson1981}.
+\subsection{Markov-hálózatok és fázistípusú eloszlások}
 
-\paragraph{Markov-hálózatok és fázistípusú eloszlások.}
 \citet{jackson1957} nyílt sorbanállási hálózatai óta ismert, hogy Markov-típusú
 útvonalválasztás mellett a stacionárius eloszlás szorzat alakú. Végtelen sok
 kiszolgálós csomópontok és Poisson-beáramlás esetén a foglaltságok független
@@ -202,21 +307,86 @@ Poisson-eloszlásúak, ami a Poisson-folyamatok jelöléstételéből következi
 \citep{neuts1981}. Elsőrendű reakcióhálózatokra \citet{jahnke2007} megmutatta,
 hogy a mesteregyenlet megoldása Poisson- és multinomiális eloszlások
 konvolúciója, így a \citet{gillespie1977}-féle pontos szimulációra ilyen
-rendszerekben csak ellenőrzésként van szükség.
+rendszerekben csak ellenőrzésként van szükség. A folytonos idejű
+Markov-láncok általános elméletét \citet{norris1997} alapján használjuk.
 
-\paragraph{Sérülékenység és hálózattervezés.}
-\citet{latora2001} hatékonysági mutatója a csúcspárok közötti legrövidebb
-utak reciprokának átlaga, amely széteső gráfra is értelmezett; közösségi
-közlekedésre \citet{cats2014} adott utasforgalommal súlyozott sérülékenységi
-elemzést. A közösségi közlekedési hálózatok tervezésének szakirodalmát
-\citet{guihaire2008} és \citet{farahani2013} tekinti át; a feladat általában
-NP-nehéz, ezért heurisztikák terjedtek el. A mohó algoritmus monoton
-szubmoduláris célfüggvényre bizonyítottan jó közelítést ad
-\citep{nemhauser1978}, költségkorláttal pedig a haszon/költség arány szerinti
-változata \citep{khuller1999}.
+\subsection{Elérhetőség, hálózattervezés és projektértékelés}
 
-% =============================================================================
-\section{Adatok és hálózat}
+Az elérhetőség klasszikus, potenciálalapú mértéke \citet{hansen1959} nevéhez
+fűződik: egy hely elérhetősége a többi hely vonzerejének az eljutási
+költséggel csökkentett összege. \citet{geurs2004} az elérhetőségi mutatók
+típusait és alkalmazási feltételeit tekinti át; a jelen dolgozat
+csomópontonkénti elérhetősége ennek a családnak egy egyszerű,
+eljutási idő reciprokával súlyozott tagja. A kötöttpályás hálózatok
+tervezésének optimalizálási módszereit \citet{laporte2000}, a közösségi
+közlekedési hálózattervezés és menetrendkészítés irodalmát
+\citet{guihaire2008}, a városi közlekedési hálózattervezési feladatokat
+\citet{farahani2013} tekinti át. A feladat általában NP-nehéz, ezért
+heurisztikák terjedtek el. A mohó algoritmus monoton szubmoduláris
+célfüggvényre bizonyítottan jó közelítést ad \citep{nemhauser1978},
+költségkorláttal pedig a haszon/költség arány szerinti változata a szokásos
+eljárás \citep{khuller1999}. A közlekedési beruházások értékelésének európai
+gyakorlatát a költség--haszon elemzés határozza meg \citep{ec2014}; a jelen
+dolgozat mutatói ennek nem helyettesítői, hanem gyors, hálózati szintű
+előszűrésre alkalmasak.
+
+\subsection{Budapest közlekedésfejlesztési tervei}
+
+A főváros közlekedésfejlesztési stratégiája a 2019-ben elfogadott Budapesti
+Mobilitási Terv 2030 \citep{bmt2019}, amely a kötöttpályás hálózat
+összekapcsolását, a villamoshálózat fonódó szerkezetűvé alakítását és a HÉV-ek
+városi integrációját jelöli ki fő irányként. A fonódó villamoshálózat
+koncepciója szerint a Duna két partjának villamosvonalait úgy kell
+összekötni, hogy a belváros átszállás nélkül átjárható legyen
+\citep{fonodo2030}. A dolgozat négy, jelenleg előkészítés vagy megvalósítás
+alatt álló projektet vizsgál.
+
+\paragraph{Bajcsy-Zsilinszky úti villamos (pesti fonódó II.).}
+A Lehel tér és a Deák Ferenc tér között a Váci úton és a Bajcsy-Zsilinszky
+úton mintegy $2{,}2$--$2{,}3$~km új villamosvonal épülne hat megállóval, ebből
+kettő a Nyugati tér környezetében. A vonal az észak-pesti $12$-es, $14$-es és
+$69$-es villamost a dél-budai $47$-es és $49$-es villamossal kötné össze, így
+Újpest és Újbuda között átszállásmentes kötöttpályás kapcsolat jönne létre. A
+BKK számítása szerint naponta $44$--$49$~ezer utas jutna átszállás nélküli
+kapcsolathoz; a kiviteli tervek 2028 második felére készülhetnek el
+\citep{bkk2024fonodo, pestbuda2025}.
+
+\paragraph{Budai fonódó villamoshálózat II. üteme.}
+A Szent Gellért tértől a Műegyetem rakparton és a Pázmány Péter sétányon át
+a Budafoki út -- Dombóvári út csomópontig $2{,}8$~km kétvágányú villamosvonal
+épül hét megállópárral (Szent Gellért tér, Bertalan Lajos utca, Petőfi híd,
+Magyar tudósok körútja, Pázmány Péter sétány, Nádorkert vasúti megálló,
+Budafoki út -- Dombóvári út). A kivitelező 2026 márciusában ismertté vált, a
+megvalósítás 2026 őszén kezdődhet \citep{bkk2026bf2, beruhazas2026}.
+
+\paragraph{Budafoki úti villamos.}
+A Dombóvári út és a Savoya Park közötti térségben 2030-ig mintegy $18\,000$ új
+lakás és $40\,000$ új lakó várható. A BKK célja, hogy a fejlődő
+lakóterületeket közvetlen kötöttpályás kapcsolat kösse a belvárossal, a
+Műegyetem rakparti villamoshoz és a Nagykörúthoz csatlakozva. Az első
+ütemben mintegy $3{,}4$~km villamosvonal épülne a Budafoki úton; a projekt
+társadalmi egyeztetése 2026 júniusában--júliusában zajlott
+\citep{bkk2026budafoki}.
+
+\paragraph{M5 (észak--déli regionális gyorsvasút).}
+Az M5 a szentendrei (H5), a ráckevei (H6) és a csepeli (H7) HÉV belvárosi
+alagúton át történő összekötését jelenti. A déli szakaszon a H7 a
+Közvágóhídnál csatlakozna a H6-hoz, a két vonal a Boráros téren át a Kálvin
+térig haladna, ahol mélyállomás épülne; a Kálvin tér és a Margit híd budai
+hídfője közötti alagút nyomvonalát megvalósíthatósági vizsgálat határozza meg
+\citep{bavs2021, metropol2022}. A belvárosi változatok között a Lehel téri
+és a Nyugati pályaudvari nyomvonal szerepel. A projekt előkészítése a
+sajtó szerint 2026-ban is vita tárgya \citep{economx2026}.
+
+A tervek indoklása jellemzően projektszintű: utasszámokat, átszállási
+időmegtakarítást és költség--haszon mutatókat közöl. Ami ezekből hiányzik, és
+amihez a dolgozat hozzá kíván járulni, az a hálózati szintű, egységes keretben
+végzett összehasonlítás: hogyan változtatja meg egy-egy fejlesztés a teljes
+hálózat eljutási időit és sérülékenységét, mennyire erősítik vagy helyettesítik
+egymást a projektek, és mi lenne a következő leghatékonyabb lépés, ha a
+tervezett fejlesztések megvalósulnak.
+
+\section{Adatok és hálózati modell}
 \label{sec:adat}
 
 \subsection{Menetrend és szolgáltatási nap}
@@ -259,11 +429,14 @@ $r_{ss'}$ az $i\to j\to k$ útvonalon haladó és az $i\to j$ menetek számának
 hányadosa; $r_{s,\mathrm{vég}}=1-\sum_{s'}r_{ss'}$ a $j$-ben végállomáshoz
 érő menetek aránya. A hálózat \NHUBS{} csomópontból és \NSEGS{}
 vonalszakaszból áll; az ablakban \NTRIPSEG{} menet--szakasz indulás történik.
-A követési idők szabályosak: a $\mathrm{CV}^2$ mediánja \MEDCVSQ, és a
+A korábbi dolgozatunk gráfjához (237$ csomópont, 914$ él) képest a
+hálózat a HÉV-vonalakat is tartalmazza, az éleket pedig viszonylatonként
+(vonalszakaszonként) tartja nyilván, így a járművön maradás és a
+viszonylatonkénti gyakoriság is modellezhető. A követési idők szabályosak: a $\mathrm{CV}^2$ mediánja \MEDCVSQ, és a
 szakaszok \SHARECVLOW{}\%-án $0{,}1$ alatti.
 
 % =============================================================================
-\section{A modell}
+\section{A Markov-modell}
 \label{sec:modell}
 
 \subsection{Állapottér és átmenetek}
@@ -509,7 +682,7 @@ $\bm L$ lineáris $\bm\lambda$-ban, a $\lambda_h$ ráták skáláját utólag ú
 rögzítjük, hogy a felszállások száma az ablakban $N_{\mathrm{nap}}\phi$ legyen.
 
 % =============================================================================
-\section{Sérülékenység és hálózatfejlesztés}
+\section{Hálózati mutatók és a fejlesztések modellezése}
 \label{sec:halozat}
 
 \subsection{Igényekkel súlyozott hatékonyság}
@@ -540,6 +713,57 @@ elvesznek) és egy \emph{hálózati} részre, amely a többi $o$--$d$ pár
 hatékonyságának csökkenése, vagyis a csomópont átszállási szerepét méri. A
 legrövidebb utakat minden csomópontból Dijkstra-algoritmussal, pontosan
 számoljuk.
+
+\subsection{Elérhetőség és az eljutási idők Expected Shortfall mutatója}
+
+A hatékonyság a teljes hálózatot egyetlen számmal jellemzi. A fejlesztések
+területi hatásának mérésére csomópontonkénti elérhetőséget használunk, amely
+\citet{hansen1959} potenciálalapú mértékének eljutási idővel súlyozott
+változata:
+\[
+  A_o=\sum_{d\ne o}\frac{w_d}{t_{od}}\quad[\mathrm s^{-1}],\qquad
+  \Delta A_K=\frac{\sum_{o\in K}w_oA_o'}{\sum_{o\in K}w_oA_o}-1,
+\]
+ahol $K$ egy kerület csomópontjainak halmaza, $A_o'$ pedig a fejlesztés utáni
+elérhetőség. A korábbi dolgozatunkhoz hasonlóan a legrosszabb esetek
+súlyát is mérni szeretnénk, ezért az Expected Shortfall mutatót
+\citep{acerbi2002} az igényekkel súlyozott eljutási idők eloszlására
+alkalmazzuk.
+
+\begin{definicio}[Az eljutási idők Expected Shortfall mutatója]
+Tekintsük az $o\ne d$ párokon a $t_{od}$ eljutási időket $w_ow_d$
+súlyokkal (a súlyokat egyre normálva). Az $\alpha$ szintű Expected Shortfall
+\[
+  \mathrm{ES}_\alpha=\frac{1}{1-\alpha}\int_\alpha^1 F^{-1}(u)\,\mathrm du ,
+\]
+ahol $F$ a súlyozott eloszlásfüggvény; véges eloszlásra ez a leghosszabb
+eljutási idők $(1-\alpha)$ súlyú részének súlyozott átlaga. A dolgozatban
+$\alpha=0{,}9$, vagyis a legrosszabb tized utazásait vizsgáljuk.
+\end{definicio}
+
+A korábbi dolgozatban az ES egy-egy kiesés okozta késések eloszlására
+vonatkozott; itt az utazási igénnyel súlyozott eljutási idők eloszlására.
+Mindkét esetben azt mutatja meg, mekkora a legrosszabb esetek átlagos
+vesztesége, ezért alkalmas annak eldöntésére, hogy egy fejlesztés a
+leghosszabb, jellemzően peremkerületi utazásokat rövidíti-e.
+
+\subsection{A tervezett fejlesztések modellezése}
+
+A tervezett vonalakat a jelölt vonalakkal azonos módon, a meglévő
+csomópontokra illesztett állomásokkal modellezzük. Ahol a terv olyan új
+megállót tartalmaz, amelynek nincs meglévő megfelelője (Bertalan Lajos utca,
+Nádorkert vasúti megálló), az a modellben nem kaphat igényt, és csak a
+menetidőben jelenik meg. A vonalhosszt a hivatalos adatokhoz igazítjuk
+(Bajcsy-Zsilinszky úti villamos $2{,}3$~km, Budai fonódó II. $2{,}8$~km),
+a Budafoki úti villamost pedig az utcagráfon, a Budafoki úton vezetjük.
+Két terv a meglévő vonalak összekötését is jelenti, ezt a folytatási
+arányokkal modellezzük: a Bajcsy-Zsilinszky úti villamoson a $14$-es villamos
+utasai a Lehel téren átszállás nélkül folytatják útjukat a $47$-es, a $12$-es
+utasai a $49$-es vonalán (és viszont); az M5-ön a H5, H6 és H7 utasai haladnak
+át a belvárosi alagúton. A villamosvonalak követése $5$~perc, az M5 két
+szolgáltatási mintájáé együtt $3$~perc. Az igény alapesetben rögzített; a
+\ref{sec:tervek}.~fejezetben a dél-budai lakásépítések hatását külön
+forgatókönyvben vizsgáljuk.
 
 \subsection{Új vonalak}
 
@@ -647,7 +871,8 @@ a metró kilométerköltségét a villamosénak \COSTRATIO-szeresére vesszük
 hatása az eljutási idők javulásán keresztül jelenik meg.
 
 % =============================================================================
-\section{Eredmények}
+% =============================================================================
+\section{Eredmények: a jelenlegi hálózat}
 \label{sec:eredmeny}
 
 \subsection{Stacionárius áramlás}
@@ -752,306 +977,582 @@ Megszakadáskor a belső metrócsomópontok kerülnek előre (\FAILNAMEA{}
 forgatókönyv rangkorrelációja \RHOCF, vagyis az átszállóközpontok és a
 pályahálózat sérülékenysége két külön kérdés.
 
-\subsection{Új vonalak}
 
-Az \NCAND{} jelölt vonalból (\NCANDM{} metró, \NCANDV{} villamos) a mohó
-algoritmus választotta ki a
-\ref{tab:lines}.~táblázat és a \ref{fig:newlines}.~ábra öt vonalát. Az öt vonal
-együtt \PKGGAIN\%-kal növeli a hatékonyságot; a teljes Dijkstra-számítással
-kapott érték megegyezik a min-plusz frissítésekből kapott \PKGGAINMP\%-kal,
-ami a \ref{tet:minplus}.~tétel gyakorlati ellenőrzése. Az utasszámok a
-kiegészített hálózaton, rögzített igény mellett számolt csúcsidei
-felszállások.
+\paragraph{Összevetés a korábbi eredményekkel.}
+A korábbi dolgozatunk közöttiség-alapú elemzése a Kálvin teret a hálózat
+egyik jelentős központjaként azonosította; a jelen modellben a Kálvin tér a
+bezárás hálózati hatása szerint a tíz legkritikusabb csomópont között van, és
+megszakadáskor a hetedik helyre lép előre. A korábbi elemzés szerint a belső
+kerületek hálózata sűrű és robusztus; ennek megfelelően a Deák Ferenc tér
+hálózati szerepét itt is a párhuzamos metróvonalak mérséklik. Az új modell
+ugyanakkor olyan pontokat is kiemel, amelyek a topológiai mutatókon nem
+feltűnőek: a Hűvösvölgy és a Határ út kritikussága abból fakad, hogy egy-egy
+városrész egyetlen átszállási pontjai, ami az utazási igény és a várakozási
+idők nélkül nem látszik. A két megközelítés tehát kiegészíti egymást: a
+topológiai elemzés a hálózat szerkezeti gerincét, az utasáramlási modell az
+utazások szempontjából pótolhatatlan pontokat azonosítja.
+
+% =============================================================================
+\section{A tervezett fejlesztések hatása}
+\label{sec:tervek}
+
+Ebben a fejezetben a négy tervet egyenként, majd együtt értékeljük. A
+\ref{tab:plans}.~táblázat felső része a tervek hatását, a
+\ref{fig:plans}.~ábra a nyomvonalakat mutatja; a táblázat alsó részét és az
+ábra színes vonalait a \ref{sec:hozzajarulas}.~fejezet tárgyalja.
 
 \begin{table}[!htbp]
 \centering
-\caption{A javasolt vonalak (U1--U5) a kiválasztás sorrendjében és a tervezett
-M5 két központi változata. $\Delta E/E$: a hatékonyság határnövekménye (az M5
-soraiban a teljes növekmény); \enquote{per költség}: $\Delta E/E$ osztva a
-költségindexszel ($\cdot10^{-4}$; villamos 1/km, metró \COSTRATIO/km);
-utas/óra: felszállások a reggeli csúcsban.}
-\label{tab:lines}
+\caption{A tervezett fejlesztések és a tervek megvalósulása utáni legjobb
+további vonalak (J1--J5). $\Delta E/E$: a hatékonyság növekménye az ép
+hálózathoz képest (a J-soroknál a tervek utáni határnövekmény); /költség:
+$\Delta E/E$ osztva a költségindexszel ($\cdot10^{-4}$; villamos 1/km, metró
+\COSTRATIO/km); utas/óra: felszállások a reggeli csúcsban.}
+\label{tab:plans}
 \footnotesize
 \setlength{\tabcolsep}{3pt}
-\begin{tabular}{p{2.1cm}lp{4.4cm}rrrrr}
+\begin{tabular}{p{2.5cm}lp{3.9cm}rrrrr}
 \toprule
  & Mód & Végpontok & Áll. & km & $\Delta E/E$ [\%] & /költség & Utas/óra \\
 \midrule
-\csname @@input\endcsname generated/table_lines.tex
+\csname @@input\endcsname generated/table_plans.tex
 \bottomrule
 \end{tabular}
 \end{table}
 
 \begin{figure}[!htbp]
   \centering
-  \includegraphics[width=0.9\textwidth]{figures/fig_new_lines.pdf}
-  \caption{A javasolt vonalak (U1--U5, a kiválasztás sorrendjében) és a
-  tervezett M5 metró A változata a meglévő kötöttpályás hálózaton.}
-  \label{fig:newlines}
+  \includegraphics[width=0.9\textwidth]{figures/fig_plans.pdf}
+  \caption{A tervezett fejlesztések (fekete) és a megvalósulásuk utáni
+  legjobb további vonalak (J1--J5, színes) a meglévő kötöttpályás hálózaton.}
+  \label{fig:plans}
 \end{figure}
 
-\paragraph{A javasolt vonalak.}
-Az alapesetben (a metró kilométerköltsége a villamosénak \COSTRATIO-szerese)
-mind az öt kiválasztott vonal villamos, és mindegyik meglévő főútvonalon
-halad (\ref{fig:newlines}.~ábra). Az U1 (\ULENA~km) Kispest belső utcáin a
-Kőbánya-Kispest és a Határ út metróállomást köti össze. Az U2 (\ULENB~km) a
-Hősök teréről a Damjanich utcán, a Bethlen Gábor téren és a Rottenbiller
-utcán át a Blaha Lujza térig és a Rákóczi térig vezet, vagyis a mai
-trolibuszfolyosón kapcsolja a Városligetet a Nagykörúthoz. Az U3
-(\ULENC~km) a Kálvin tér -- Astoria -- Deák Ferenc tér -- József nádor tér --
-Széchenyi István tér útvonalon a Kiskörút hiányzó villamoskapcsolatát
-pótolja. Az U4 (\ULEND~km) a Margit híd budai hídfőjétől a Margit körúton és
-a Széll Kálmán téren át a Városmajorig hosszabbítja meg a körúti tengelyt. Az
-U5 (\ULENE~km) Dél-Budán Kelenföldet köti össze Őrmezővel, Kelenvölggyel és
-Rózsavölggyel; a leghosszabb, és a legtöbb utast (\UBOARDE{} felszállás
-óránként) vonzza, de egységnyi költségre kisebb javulást ad. A
-határnövekmények csökkenő sorrendje (\UGAINA\% az első lépésben) a
-\ref{all:szubmod}.~állításban megfogalmazott csökkenő hozadéknak felel meg.
+\subsection{Bajcsy-Zsilinszky úti villamos}
 
-\paragraph{Érzékenység és a metróvonalak.}
-Ha a metró kilométerköltsége csak a villamosénak ötszöröse, a kiválasztásba
-három metróvonal is bekerül, köztük \RFIVENAMEA{} (\RFIVELENA~km,
-$+$\RFIVEGAINA\%) és \RFIVENAMEB{} (\RFIVELENB~km, $+$\RFIVEGAINB\%); a
-csomag együttes javulása ekkor \RFIVECUM\%. Az első nyomvonala gyakorlatilag
-a tervezett M5 belvárosi alagútja, vagyis a módszer a tervektől függetlenül
-is ezt a folyosót találja meg. Húszszoros költségaránynál a kiválasztás
-azonos az alapesettel. Tisztán a javulás szerint rangsorolva mind az öt vonal
-metró: \PGNAMEA{} ($+$\PGGAINA\%), \PGNAMEB{} ($+$\PGGAINB\%) és \PGNAMEC{}
-($+$\PGGAINC\%) az első három, öt vonallal együtt \PGCUM\%. A második ismét
-az M5 folyosója, a csepeli HÉV vonalán meghosszabbítva.
+A Lehel tér -- Nyugati pályaudvar -- Báthory utca -- Arany János utca --
+Bajcsy-Zsilinszky út -- Deák Ferenc tér útvonalon vezetett villamos a
+$12$/$14$ és a $47$/$49$ vonalak összekötésével csúcsóránként \PLBAJBOARD{}
+felszállást vonz, ami a vizsgált villamostervek közül a legtöbb; a
+legterheltebb szakaszon \PLBAJSECT{} utas halad óránként. A hálózati
+hatékonyságot ugyanakkor csak \PLBAJGAIN\%-kal javítja, és a XIII. és az
+V.~kerület elérhetőségét is csak \PLBAJDXIII\%, illetve \PLBAJDV\%-kal
+növeli. Ennek oka, hogy a vonal állomásai pontosan az M3 metró állomásait
+követik: a Lehel tér és a Deák Ferenc tér között a leggyorsabb eljutás már ma
+is a metró, a villamos tehát a legrövidebb utakat alig változtatja meg.
 
-\paragraph{A tervezett M5.}
-Az M5 két belvárosi változatát (A: Lehel tér, B: Nyugati pályaudvar) a
-szentendrei, a ráckevei és a csepeli HÉV átmenő forgalmával modelleztük: a
-H5 utasai a Margit híd budai hídfőjénél, a H6 és H7 utasai a Közvágóhídnál,
-illetve a Boráros téren átszállás nélkül haladnak tovább. A hatékonyság
-javulása \MFGAINA\%, illetve \MFGAINB\%, ami nagyobb, mint az öt javasolt
-villamosvonalé együtt (\PKGGAIN\%). Csúcsóránként mintegy \MFBOARDA{}
-felszállást vonz. Egységnyi költségre vetítve azonban a jelöltek
-között csak a \MFRANKB.\ (B), illetve \MFRANKA.\ (A) helyen áll, mert a
-metró kilométerköltsége a villamosénak többszöröse. A Nyugati pályaudvari
-változat rövidebb és valamivel nagyobb javulást ad, ezért a modell szerint
-kedvezőbb. Összefoglalva: rövid távon a belső villamoshálózat hiányzó
-kapcsolatai hozzák a legtöbbet egységnyi költségre, nagyobb beruházási
-keretben pedig az M5 folyosója a leghatékonyabb metróvonal.
+Ez az eredmény nem a projekt ellen szól, hanem azt mutatja meg, miben rejlik
+az értéke. A BKK indoklása is az átszállásmentes kapcsolatot hangsúlyozza
+\citep{bkk2024fonodo}: Újpest és Újbuda között a Deák téri és a Lehel téri
+átszállás elmarad, a felszíni villamos akadálymentes és sűrű megállókiosztású
+alternatívát ad a mélyvezetésű metróhoz, és tehermentesíti az M3 belső
+szakaszát. A modell ezekből csak az átszállási várakozás megtakarítását
+méri, a kapacitást és a kényelmet nem, mert lineáris és kapacitáskorlát
+nélküli. A projekt értékelésében ezért az M3 zsúfoltságának és
+pótlóbuszos üzemének (például felújítások idején) figyelembevétele lényeges;
+a modell ehhez a terhelési oldalt adja, a kapacitás oldalát nem.
+
+\subsection{Budai fonódó villamoshálózat II. üteme}
+
+A Szent Gellért tér -- Petőfi híd -- Magyar tudósok körútja -- Infopark --
+Budafoki út / Dombóvári út útvonal ($\PLBFLEN$~km) a hatékonyságot
+\PLBFGAIN\%-kal, Újbuda elérhetőségét \PLBFDXI\%-kal javítja, és
+csúcsóránként \PLBFBOARD{} felszállást vonz. A vonal a Duna-parti egyetemi
+és irodanegyedet köti a fonódó hálózathoz; mivel a tervezett hét megállóból
+kettőnek (Bertalan Lajos utca, Nádorkert) nincs meglévő megfelelője, a modell
+a vonal forgalmát alulbecsli. A hatás jellemzően helyi: az eljutási idők
+legrosszabb tizedét (ES) nem változtatja meg.
+
+\subsection{Budafoki úti villamos}
+
+A Budafoki úton vezetett, a Dombóvári úttól a Savoya Parkig tartó
+villamosvonal ($\PLBULEN$~km, a modellben \PLBUNST{} állomással: \PLBUSTATIONS)
+a mai igény mellett \PLBUBOARD{} felszállást vonz, és a hatékonyságot
+\PLBUGAINTHREE\%-kal javítja. A mai igényszint azonban éppen ennél a
+projektnél félrevezető: a BKK szerint a Dombóvári út és a Savoya Park között
+2030-ig mintegy $18\,000$ új lakás és $40\,000$ új lakó várható
+\citep{bkk2026budafoki}.
+
+\paragraph{Jövőbeli igény.}
+A modell lineáris, ezért az új lakók utazásai egyszerűen hozzáadódnak a
+forrásvektorhoz. Lakónként napi $2$ felszállással (ami a $3{,}4$~millió
+felszállás és a mintegy $1{,}7$~millió lakos arányának felel meg) és a
+csúcsidei $20\%$-os hányaddal a \DEMRES{} új lakó óránként mintegy
+\DEMEXTRA{} többletfelszállást jelent, amelyet a Budafoki úti állomások
+$600$~m-es környezetében lévő \DEMCATCH{} csomópontra osztunk el. Ekkor a két
+dél-budai villamosterv (Budai fonódó II. és Budafoki úti villamos) együttes
+utasszáma \DEMBTODAY-ről \DEMBFUT{} felszállásra nő óránként
+(\DEMBRATIO-szeres), a hálózati hatékonyságra gyakorolt hatásuk pedig
+\DEMGTODAY\%-ról \DEMGFUT\%-ra (\DEMGRATIO-szeres). A dél-budai villamostervek
+értéke tehát nagyrészt a jövőbeli lakóterületi fejlesztéshez kötődik; a
+modell ezt a kapcsolatot számszerűsíteni tudja, és a lakásépítés ütemezésének
+függvényében a projekt ütemezésére is használható.
+
+\subsection{M5}
+
+A Nyugati pályaudvari változatú M5 a H5, H6 és H7 átmenő forgalmával a
+hatékonyságot \PLMFGAIN\%-kal javítja, vagyis több mint húszszor annyival,
+mint a villamostervek bármelyike, és csúcsóránként \PLMFBOARD{} felszállást
+vonz. Az eljutási idők legrosszabb tizedének átlaga (ES) \ESZERO{} percről
+\PLMFES{} percre, \PLMFESDIFF{} perccel csökken; a négy terv közül csak az M5
+rövidíti érdemben a leghosszabb utazásokat.
+
+A területi hatás a legfontosabb: Csepel (XXI.~kerület) elérhetősége
+\PLMFDXXI\%-kal nő, a Ferencvárosé (IX.) \PLMFDIX\%-kal, a XIII.~kerületé
+\PLMFDXIII\%-kal. Korábbi dolgozatunk egyik fő megállapítása az volt, hogy
+Csepel tömegközlekedési hálózata nem integrálódik megfelelően a budapesti
+rendszerbe \citep{molnar2026}. A jelen modell szerint a tervezett fejlesztések
+közül egyedül az M5 ad erre érdemi választ: a csepeli HÉV átszállás nélküli
+belvárosi folytatása a kerület elérhetőségét nagyobb mértékben javítja, mint
+a többi terv bármely kerületét.
+
+\subsection{A tervek együttes hatása}
+
+A négy terv együtt \PKGPLGAIN\%-kal javítja a hatékonyságot, ami valamivel
+több, mint a külön-külön számolt hatások összege (\PKGPLSUM\%). A tervek
+tehát nem helyettesítik, hanem kissé erősítik egymást; a többlet főleg a két
+dél-budai villamosterv összekapcsolódásából ered, amelyek együtt folytonos
+kapcsolatot adnak a Szent Gellért tértől a Savoya Parkig. A legrosszabb tized
+eljutási ideje a négy terv után \PKGPLES{} perc, Csepel elérhetősége
+\PKGDXXI\%-kal, Újbudáé \PKGDXI\%-kal, Budafok-Tétényé (XXII.)
+\PKGDXXII\%-kal nő.
 
 % =============================================================================
-\section{Korlátok}
+\section{Az eredmények illeszkedése a budapesti fejlesztésekhez}
+\label{sec:hozzajarulas}
+
+\subsection{A következő lépések a tervek után}
+
+A tervek megvalósulását alapállapotnak tekintve újra lefuttattuk a
+jelöltvonal-keresést (\NCAND{} jelölt, metró egyenes alagútban, villamos az
+utcagráf főútvonalain). Az egységnyi költségre legnagyobb javulást hozó öt
+vonal (a \ref{tab:plans}.~táblázat alsó része és a \ref{fig:plans}.~ábra
+színes vonalai) mind villamos:
+\begin{itemize}
+  \item J1: \JNAMEA{} (\JLENA~km, $+$\JGAINA\%) Kispest belső utcáin,
+  \item J2: \JNAMEB{} (\JLENB~km, $+$\JGAINB\%) a Rottenbiller utcai
+    trolibuszfolyosón,
+  \item J3: \JNAMEC{} (\JLENC~km, $+$\JGAINC\%) a Margit körút folytatásaként,
+  \item J4: \JNAMED{} (\JLEND~km, $+$\JGAIND\%) a Kiskörút és a Rákóczi út
+    mentén,
+  \item J5: \JNAMEE{} (\JLENE~km, $+$\JGAINE\%) Dél-Budán, Kelenföldet Őrmezővel,
+    Kelenvölggyel és Rózsavölggyel összekötve.
+\end{itemize}
+A tervek és az öt további vonal együtt \AFTERGAIN\%-kal javítja a
+hatékonyságot az ép hálózathoz képest, a legrosszabb tized eljutási ideje
+\AFTERES{} perc. Újbuda elérhetősége ekkor \AFTDXI\%-kal, Budafok-Tétényé
+\AFTDXXII\%-kal nő.
+
+\subsection{Kiegészítik vagy helyettesítik a terveket a javaslatok?}
+
+A tervektől függetlenül futtatott keresés (\ref{sec:halozat}.~fejezet
+módszerével, az ép hálózaton) lényegében ugyanezt az öt folyosót találta meg:
+U1 \UNAMEA, U2 \UNAMEB, U3 \UNAMEC, U4 \UNAMED, U5 \UNAMEE. A tervek
+megvalósulása után ezek határnövekménye az eredetinek \INTUA, \INTUB, \INTUC,
+\INTUD, illetve \INTUE-szerese. Négy vonal hatását a tervek tehát nem
+befolyásolják: ezek olyan folyosókat szolgálnak ki (Kispest, a Városliget --
+Nagykörút kapcsolat, a budai körút folytatása, Dél-Buda belső
+lakótelepei), amelyeket a jelenlegi tervek nem érintenek. A Kálvin tér --
+Deák Ferenc tér -- Széchenyi István tér vonal (U3) hatása viszont
+\INTUC-szeresére csökken, mert a Bajcsy-Zsilinszky úti villamos és az M5
+ugyanezt a térséget szolgálja ki; a tervek után a modell a Kiskörúti
+kapcsolatot keletebbre, az Uránia felé tolja (J4).
+
+\subsection{Mit tud hozzátenni a modell a tervezéshez?}
+
+Az eredmények alapján a modell négy módon járulhat hozzá a folyamatban lévő
+tervezéshez.
+
+\paragraph{Egységes, hálózati szintű összehasonlítás.}
+A tervek projektszintű indoklásai eltérő módszerekkel és feltevésekkel
+készülnek. A modell ugyanazon a menetrendi alapon, ugyanazokkal a mutatókkal
+(hatékonyság, elérhetőség, ES, utasszám) értékeli őket, így láthatóvá válik,
+hogy az M5 hálózati hatása nagyságrenddel nagyobb a villamosterveknél, a
+villamostervek értéke pedig nagyrészt helyi, illetve a jövőbeli igényhez
+kötött.
+
+\paragraph{Kölcsönhatások.}
+A min-plusz frissítés és a csökkenő hozadék miatt olcsón kiszámítható, hogy
+két fejlesztés erősíti vagy helyettesíti egymást. A dél-budai tervek
+egymást erősítik, a Kiskörúti villamoskapcsolat és a Bajcsy-Zsilinszky úti
+villamos részben helyettesítik egymást. Ez a tervezés sorrendjére is
+következtetést ad: a helyettesítő projektek közül elég az egyiket előre
+venni.
+
+\paragraph{Igény és lakásépítés.}
+A dél-budai villamosok példája mutatja, hogy a modell lineáris szerkezete
+miatt a lakóterületi fejlesztések hatása forrásvektor-változásként egyszerűen
+beépíthető. A Budafoki úti villamos indoklásában szereplő $40\,000$ új lakó
+a modellben több mint kétszeresére növeli a dél-budai villamostervek
+utasszámát és hálózati hatását.
+
+\paragraph{Sérülékenység a fejlesztések után.}
+A korábbi dolgozatunk sérülékeny pontjai közül Csepel integrációja az M5-tel
+érdemben javul. A Bajcsy-Zsilinszky úti villamos az M3 belső szakaszának
+párhuzamos felszíni alternatívája, így az M3 kiesésére vagy felújítására
+vonatkozó sérülékenységet csökkenti; ezt a modell megszakadásos
+forgatókönyvével közvetlenül vizsgálni lehet.
+
+% =============================================================================
+\section{Korlátok és továbbfejlesztési lehetőségek}
 \label{sec:korlat}
 
 \begin{itemize}
   \item \textbf{Igény.} A kiinduló igény az indulásokkal arányos. Népességi,
     munkahelyi vagy jegyadatok nélkül az abszolút szintek, különösen a módok
-    közötti megoszlás, szemléltető jellegűek. A lineáris szerkezet miatt a
-    teljes skála egyetlen szorzóban van, a térbeli mintázat viszont csak
-    igénymátrixszal kalibrálható.
-  \item \textbf{Útvonalválasztás.} Az utas nem egy célállomás felé halad,
-    hanem csomópontonként választ. A célt is tartalmazó állapottér
-    ($\Xs\times\Hs$) elvileg kezelhető, kalibrálásához viszont
-    származási--célállomási adatok kellenek.
-  \item \textbf{Kapacitás.} A modell lineáris, a járművek befogadóképességével
-    nem számol; zsúfoltságtól függő ráták mellett elveszne a Poisson-tétel.
-  \item \textbf{Exponenciális tartózkodási idők.} A beszállási ráta az
-    átlagot illeszti; Erlang-fázisokkal a szórás is illeszthető, az állapottér
-    növelése árán, és a \ref{tet:poisson}.~tétel ekkor is érvényes.
-  \item \textbf{Időbeli homogenitás.} Az ablakon belül állandó rátákat
-    feltételezünk; szakaszonként állandó $T(t)$ mellett a tétel ugyanígy
-    érvényes, időrendezett szorzattal.
-  \item \textbf{Hálózatfejlesztés.} Az új vonalak állomásai meglévő
-    csomópontokon vannak, az igény rögzített (nincs indukált forgalom), a
-    költség a hosszal arányos index. Az utcák alkalmasságát a meglévő
-    nagyjárműforgalom közelíti (főútvonal-feltétel); a tényleges
-    útszélességet, a közművek és a csomópontok kialakítását nem vizsgáljuk, a
-    metró pedig egyenes alagútban fut.
-    Az eredmények ezért rangsorolásra és változatok összevetésére
-    alkalmasak, nem beruházási döntésre.
+    közötti megoszlás, szemléltető jellegűek; a metró részesedése a
+    valóságosnál alacsonyabb. A térbeli mintázatot igénymátrix vagy
+    utasszámláló adat kalibrálná; a lineáris szerkezet miatt a forrásvektor
+    nemnegatív legkisebb négyzetes feladattal becsülhető.
+  \item \textbf{Útvonalválasztás és kapacitás.} Az utas csomópontonként
+    választ, nem célállomás felé halad, és a modell nem számol a járművek
+    befogadóképességével. Emiatt az átszállásmentesség kényelmi értéke és a
+    zsúfoltság csökkenése (a Bajcsy-Zsilinszky úti villamos fő haszna) csak
+    részben jelenik meg.
+  \item \textbf{Új megállók.} A tervek meglévő csomópont nélküli megállói
+    (Bertalan Lajos utca, Nádorkert) nem kapnak igényt, ezért a Budai fonódó
+    II. hatását a modell alulbecsli.
+  \item \textbf{Úthálózat és költség.} Az utcák alkalmasságát a meglévő
+    nagyjárműforgalom közelíti; a tényleges útszélességet, a közműveket és a
+    csomópontok kialakítását nem vizsgáljuk. A költség a hosszal arányos
+    index, nem beruházási becslés.
+  \item \textbf{Időbeli homogenitás.} Az elemzés a reggeli csúcsra
+    vonatkozik; más napszakokra a menetrend alapján ugyanígy elvégezhető.
 \end{itemize}
 
+A továbbfejlesztés legfontosabb iránya az igényoldali adatok bevonása
+(utasszámláló és jegyadatok, a lakásépítési tervek térbeli adatai), valamint a
+repülőtéri kapcsolat vizsgálata, amelyet a korábbi dolgozatunk a hálózat
+legsérülékenyebb pontjaként azonosított, és amelyhez a tervezett repülőtéri
+vasúti kapcsolat a GTFS-adatokban még nem szerepel.
+
 % =============================================================================
-\section{Összefoglalás}
-\label{sec:osszefoglalas}
+\section{Következtetések}
+\label{sec:kovetkeztetes}
 
 A dolgozatban kizárólag nyilvános menetrendi adatokból építettünk
-utasáramlási modellt a budapesti közösségi közlekedésre. A vonalszintű nyílt
-Markov-hálózatban a beszállási ráta a követési idő első két momentumához
-illeszkedik, a viszonylatválasztás a minimális relatív entrópia elvéből
-következik, és Poisson-ritkítással pontosan megvalósul. A modell egzakt
-megoldása (független Poisson-foglaltság, fázistípusú utazási idő) a teljes
-hálózaton egyetlen ritka lineáris egyenletrendszer, a szimulációt csak
-ellenőrzésre használtuk (K1).
+utasáramlási modellt a budapesti közösségi közlekedésre, és ezzel értékeltük a
+főváros jelenleg tervezett kötöttpályás fejlesztéseit. A vonalszintű nyílt
+Markov-hálózat egzaktul megoldható (független Poisson-foglaltság,
+fázistípusú utazási idő), a teljes hálózaton egyetlen ritka lineáris
+egyenletrendszer, és egy új vonal hatása pontos min-plusz frissítéssel
+számolható (K1).
 
-A 2026.~június~9-i reggeli csúcsra a modell a budapesti átszállóközpontok
-ismert sorrendjét adja, és megmutatja, hogy egy csomópont kritikussága nem
-azonos a forgalmával: a Hűvösvölgy vagy a Határ út hálózati szerepe nagyobb,
-mint amit forgalmuk sejtetne (K2). Az új vonal hatásának min-plusz alakja és
-a célfüggvény csökkenő hozadéka lehetővé tette, hogy több mint ezer jelölt
-vonal közül pontosan kiértékelt, mohó módon válasszunk; a javasolt vonalakat
-és a tervezett M5-öt ugyanabban a keretben hasonlítottuk össze (K3).
+A sérülékenységi elemzés megerősíti korábbi dolgozatunk eredményeit a Kálvin
+tér központi szerepéről és a belső kerületek robusztusságáról, és új,
+utazási szempontból pótolhatatlan pontokat is azonosít, mint a Hűvösvölgy és a
+Határ út (K2). A tervek közül az M5 javítja legnagyobb mértékben a hálózatot,
+egyedüliként rövidíti a legrosszabb utazásokat, és Csepel elérhetőségét
+\PLMFDXXI\%-kal növeli, ami a korábban azonosított integrációs hiányra ad
+választ. A Bajcsy-Zsilinszky úti villamos sok utast vonz, de az M3-mal
+párhuzamos nyomvonala miatt értéke az átszállásmentességben, a kapacitásban
+és a redundanciában rejlik. A dél-budai villamostervek hatása a várható új
+lakóterületekkel több mint kétszeresére nő, és a két terv egymást erősíti
+(K3). A tervek megvalósulása után a modell öt további, főútvonalakon
+vezetett villamosvonalat javasol, amelyek közül négy a tervektől független
+folyosót szolgál ki, a Kiskörúti kapcsolat pedig a tervekhez igazodva
+módosul (K4).
 
-A következő lépés az igényoldali adatok bevonása. Mivel a modell lineáris és
-egzakt, ez egyszerű: utasszámláló adatok esetén az $\bm L$ és az áramlások
-lineárisak a $\lambda_h$ forrásokban, így a forrásvektor nemnegatív legkisebb
-négyzetes feladattal becsülhető, és a hálózatfejlesztési rangsor ezután a
-mért igénnyel is újraszámolható.
-
-\paragraph{Adatok és kód.}
-Menetrend: BKK GTFS \FEEDVER{} (CC0), a MobilityData tükréről;
-kerülethatárok: geoBoundaries HUN ADM2 \citep{runfola2020}. A megvalósítást
-és a reprodukálás lépéseit az \ref{app:repro}.~függelék írja le.
+A modell tehát a tervezés kiegészítő eszköze lehet: egységes keretben
+hasonlítja össze a fejlesztéseket, kimutatja kölcsönhatásaikat, beépíti a
+várható igényváltozást, és megmutatja, mi lehet a következő leghatékonyabb
+lépés. Az igényoldali adatok bevonásával ezek az eredmények abszolút
+utasszámokban is kalibrálhatók.
 
 % =============================================================================
-\renewcommand{\refname}{Irodalomjegyzék}
+\renewcommand{\refname}{Hivatkozások}
 \begin{thebibliography}{99}
+\addcontentsline{toc}{section}{Hivatkozások}
 \setlength{\itemsep}{2pt}
 \small
 
-\bibitem[BKK(2024)]{bkk2024}
-Budapesti Közlekedési Központ (2024).
-\emph{BUDAPESTREND -- Mobility Report 2024}.
-BKK Zrt., Budapest. \url{https://bkk.hu/downloads/33386/}
-(letöltve: 2026.~október~4.).
+\bibitem[Acerbi és Tasche(2002)]{acerbi2002}
+Acerbi, C., Tasche, D. (2002). On the coherence of expected shortfall.
+\emph{Journal of Banking \& Finance}, 26(7), 1487--1503.
+
+\bibitem[Albert et~al.(2000)]{albert2000}
+Albert, R., Jeong, H., Barabási, A.-L. (2000). Error and attack tolerance of
+complex networks. \emph{Nature}, 406, 378--382.
+
+\bibitem[BAVS(2021)]{bavs2021}
+Budapesti Agglomerációs Vasúti Stratégia (2021). A Kormány által 2021-ben
+elfogadott stratégia ismertetése. We Love Budapest, 2021.~december~29.
+\url{https://welovebudapest.com/cikk/2021/12/29/budapest-hamarosan-fellelegezhetnek-az-agglomeracioban-elok-elfogadtak-a-budapesti-agglomeracios-vasuti-strategiat}
 
 \bibitem[Berman és Plemmons(1994)]{berman1994}
-Berman, A., Plemmons, R.~J. (1994).
-\emph{Nonnegative Matrices in the Mathematical Sciences}.
-SIAM, Philadelphia.
+Berman, A., Plemmons, R.~J. (1994). \emph{Nonnegative Matrices in the
+Mathematical Sciences}. SIAM, Philadelphia.
+
+\bibitem[BKK(2024a)]{bkk2024}
+Budapesti Közlekedési Központ (2024). \emph{BUDAPESTREND -- Mobility Report
+2024}. BKK Zrt., Budapest. \url{https://bkk.hu/downloads/33386/}
+
+\bibitem[BKK(2024b)]{bkk2024fonodo}
+Budapesti Közlekedési Központ (2024). Villamossal Újbudától Újpestig:
+hamarosan elkezdődhet a pesti fonódó villamosprojekt II. ütemének előkészítése
+és tervezése. BKK hír, 2024.~március.
+\url{https://bkk.hu/hirek/2024/03/villamossal-ujbudatol-ujpestig-hamarosan-elkezdodhet-a-pesti-fonodo-villamosprojekt-ii-utemenek-elokeszitese-es-tervezese.12369/}
+
+\bibitem[BKK(2026a)]{bkk2026bf2}
+Budapesti Közlekedési Központ (2026). Még az ősszel elkezdődhet a Budai fonódó
+villamoshálózat második ütemének megvalósítása. BKK hír, 2026.~július.
+\url{https://bkk.hu/hirek/2026/07/meg-az-osszel-elkezdodhet-a-budai-fonodo-villamoshalozat-masodik-utemenek-megvalositasa.16941/}
+
+\bibitem[BKK(2026b)]{bkk2026budafoki}
+Budapesti Közlekedési Központ (2026). Társadalmi egyeztetés a Budafoki úti
+villamosfejlesztésről. 2026.~június.
+\url{https://bkk.hu/dontsunk-kozosen/tarsadalmi-egyeztetes-a-budafoki-uti-villamosfejlesztesrol.16763/}
+
+\bibitem[BMT(2019)]{bmt2019}
+Budapest Főváros Önkormányzata (2019). \emph{Budapesti Mobilitási Terv 2030.
+III. Projektadatlapok}. Budapest.
+\url{https://archiv.budapest.hu/Documents/Budapesti%20Mobilit%C3%A1si%20Terv%202030/}
+
+\bibitem[Budapest.hu(2025)]{fonodo2030}
+Budapest Főváros (2025). Fonódó villamoshálózat 2030. Újbuda--Újpest
+villamostengely.
+\url{https://budapest.hu/kozlekedes/kozlekedesfejlesztes/fonodo-villamoshalozat-2030/ujbuda-ujpest-villamostengely}
+
+\bibitem[Beruházás.gov.hu(2026)]{beruhazas2026}
+Beruházás.gov.hu (2026). Budai fonódó villamoshálózat II. ütemének
+megvalósítása.
+\url{https://beruhazas.gov.hu/projektek/budai-fonodo-villamoshalozat-ii-utemenek-megvalositasa/51096}
 
 \bibitem[Cats és Jenelius(2014)]{cats2014}
-Cats, O., Jenelius, E. (2014).
-Dynamic vulnerability analysis of public transport networks: mitigation
-effects of real-time information.
-\emph{Networks and Spatial Economics}, 14(3--4):435--463.
+Cats, O., Jenelius, E. (2014). Dynamic vulnerability analysis of public
+transport networks: mitigation effects of real-time information.
+\emph{Networks and Spatial Economics}, 14(3--4), 435--463.
 
 \bibitem[Chriqui és Robillard(1975)]{chriqui1975}
-Chriqui, C., Robillard, P. (1975).
-Common bus lines.
-\emph{Transportation Science}, 9(2):115--121.
+Chriqui, C., Robillard, P. (1975). Common bus lines. \emph{Transportation
+Science}, 9(2), 115--121.
 
-\bibitem[Farahani és mtsai(2013)]{farahani2013}
-Farahani, R.~Z., Miandoabchi, E., Szeto, W.~Y., Rashidi, H. (2013).
-A review of urban transportation network design problems.
-\emph{European Journal of Operational Research}, 229(2):281--302.
+\bibitem[Derrible és Kennedy(2010)]{derrible2010}
+Derrible, S., Kennedy, C. (2010). Characterizing metro networks: state, form,
+and structure. \emph{Transportation}, 37(2), 275--297.
+
+\bibitem[Economx(2026)]{economx2026}
+Economx (2026). Budapesten kirobbant a közlekedési háború: mi lesz most az
+ötös metróval és az alagúttal? 2026.~június~10.
+\url{https://www.economx.hu/ingatlan/2026/06/10/budapesten-kirobbant-a-kozlekedesi-haboru-mi-lesz-most-az-otos-metroval-es-az-alaguttal/}
+
+\bibitem[European Commission(2014)]{ec2014}
+European Commission (2014). \emph{Guide to Cost-Benefit Analysis of Investment
+Projects: Economic appraisal tool for Cohesion Policy 2014--2020}.
+Directorate-General for Regional and Urban Policy, Brüsszel.
+
+\bibitem[Farahani et~al.(2013)]{farahani2013}
+Farahani, R.~Z., Miandoabchi, E., Szeto, W.~Y., Rashidi, H. (2013). A review of
+urban transportation network design problems. \emph{European Journal of
+Operational Research}, 229(2), 281--302.
+
+\bibitem[Gaal et~al.(2014)]{gaal2014}
+Gaal, G., Horváth, E., Csete, M., Török, Á. (2014). A budapesti közlekedés
+teljesítményének vizsgálata. In: \emph{Innováció és fenntartható felszíni
+közlekedés}, 60--63.
+
+\bibitem[Geurs és van Wee(2004)]{geurs2004}
+Geurs, K.~T., van Wee, B. (2004). Accessibility evaluation of land-use and
+transport strategies: review and research directions. \emph{Journal of
+Transport Geography}, 12(2), 127--140.
 
 \bibitem[Gillespie(1977)]{gillespie1977}
-Gillespie, D.~T. (1977).
-Exact stochastic simulation of coupled chemical reactions.
-\emph{Journal of Physical Chemistry}, 81(25):2340--2361.
+Gillespie, D.~T. (1977). Exact stochastic simulation of coupled chemical
+reactions. \emph{Journal of Physical Chemistry}, 81(25), 2340--2361.
 
 \bibitem[Guihaire és Hao(2008)]{guihaire2008}
-Guihaire, V., Hao, J.-K. (2008).
-Transit network design and scheduling: A global review.
-\emph{Transportation Research Part A}, 42(10):1251--1273.
+Guihaire, V., Hao, J.-K. (2008). Transit network design and scheduling: A
+global review. \emph{Transportation Research Part A}, 42(10), 1251--1273.
+
+\bibitem[Hansen(1959)]{hansen1959}
+Hansen, W.~G. (1959). How accessibility shapes land use. \emph{Journal of the
+American Institute of Planners}, 25(2), 73--76.
 
 \bibitem[Jackson(1957)]{jackson1957}
-Jackson, J.~R. (1957).
-Networks of waiting lines.
-\emph{Operations Research}, 5(4):518--521.
+Jackson, J.~R. (1957). Networks of waiting lines. \emph{Operations Research},
+5(4), 518--521.
 
 \bibitem[Jahnke és Huisinga(2007)]{jahnke2007}
-Jahnke, T., Huisinga, W. (2007).
-Solving the chemical master equation for monomolecular reaction systems
-analytically.
-\emph{Journal of Mathematical Biology}, 54(1):1--26.
+Jahnke, T., Huisinga, W. (2007). Solving the chemical master equation for
+monomolecular reaction systems analytically. \emph{Journal of Mathematical
+Biology}, 54(1), 1--26.
 
-\bibitem[Khuller és mtsai(1999)]{khuller1999}
-Khuller, S., Moss, A., Naor, J.~S. (1999).
-The budgeted maximum coverage problem.
-\emph{Information Processing Letters}, 70(1):39--45.
+\bibitem[Khuller et~al.(1999)]{khuller1999}
+Khuller, S., Moss, A., Naor, J.~S. (1999). The budgeted maximum coverage
+problem. \emph{Information Processing Letters}, 70(1), 39--45.
 
 \bibitem[Kingman(1993)]{kingman1993}
-Kingman, J.~F.~C. (1993).
-\emph{Poisson Processes}.
-Oxford University Press, Oxford.
+Kingman, J.~F.~C. (1993). \emph{Poisson Processes}. Oxford University Press,
+Oxford.
+
+\bibitem[Kóczy et~al.(2022)]{koczy2022}
+Kóczy, L.~Á., Csercsik, D., Sziklai, B.~R. (2022). Nord Stream 2: A prelude to
+war. \emph{Energy Strategy Reviews}, 44.
+
+\bibitem[Laporte et~al.(2000)]{laporte2000}
+Laporte, G., Mesa, J.~A., Ortega, F.~A. (2000). Optimization methods for the
+planning of rapid transit systems. \emph{European Journal of Operational
+Research}, 122(1), 1--10.
 
 \bibitem[Larson és Odoni(1981)]{larson1981}
-Larson, R.~C., Odoni, A.~R. (1981).
-\emph{Urban Operations Research}.
+Larson, R.~C., Odoni, A.~R. (1981). \emph{Urban Operations Research}.
 Prentice-Hall, Englewood Cliffs.
 
 \bibitem[Latora és Marchiori(2001)]{latora2001}
-Latora, V., Marchiori, M. (2001).
-Efficient behavior of small-world networks.
-\emph{Physical Review Letters}, 87(19):198701.
+Latora, V., Marchiori, M. (2001). Efficient behavior of small-world networks.
+\emph{Physical Review Letters}, 87(19), 198701.
 
-\bibitem[Nemhauser és mtsai(1978)]{nemhauser1978}
-Nemhauser, G.~L., Wolsey, L.~A., Fisher, M.~L. (1978).
-An analysis of approximations for maximizing submodular set functions --~I.
-\emph{Mathematical Programming}, 14(1):265--294.
+\bibitem[Mattsson és Jenelius(2015)]{mattsson2015}
+Mattsson, L.-G., Jenelius, E. (2015). Vulnerability and resilience of
+transport systems -- A discussion of recent research. \emph{Transportation
+Research Part A}, 81, 16--34.
+
+\bibitem[Metropol(2022)]{metropol2022}
+Metropol (2022). A Metropol megmutatja: ezen a nyomvonalon fog járni az 5-ös
+metró. 2022.~augusztus.
+\url{https://metropol.hu/aktualis/2022/08/m5-h5-h6-h7-hev-metro-terkep-nyomvonal-allomas-seo}
+
+\bibitem[Molnár és Petrényi-Szederjessy(2026)]{molnar2026}
+Molnár, M., Petrényi-Szederjessy, A. (2026). \emph{Hálózati centralitás,
+sérülékenység és robusztusság vizsgálata a budapesti közösségi közlekedési
+rendszerben GTFS adatok alapján}. TDK-dolgozat, Budapesti Corvinus Egyetem,
+2026.~április~13.
+
+\bibitem[Nemhauser et~al.(1978)]{nemhauser1978}
+Nemhauser, G.~L., Wolsey, L.~A., Fisher, M.~L. (1978). An analysis of
+approximations for maximizing submodular set functions -- I.
+\emph{Mathematical Programming}, 14(1), 265--294.
 
 \bibitem[Neuts(1981)]{neuts1981}
-Neuts, M.~F. (1981).
-\emph{Matrix-Geometric Solutions in Stochastic Models: An Algorithmic
-Approach}.
-Johns Hopkins University Press, Baltimore.
+Neuts, M.~F. (1981). \emph{Matrix-Geometric Solutions in Stochastic Models: An
+Algorithmic Approach}. Johns Hopkins University Press, Baltimore.
 
 \bibitem[Norris(1997)]{norris1997}
-Norris, J.~R. (1997).
-\emph{Markov Chains}.
-Cambridge University Press, Cambridge.
+Norris, J.~R. (1997). \emph{Markov Chains}. Cambridge University Press,
+Cambridge.
 
-\bibitem[Runfola és mtsai(2020)]{runfola2020}
-Runfola, D. és mtsai (2020).
-geoBoundaries: A global database of political administrative boundaries.
-\emph{PLoS ONE}, 15(4):e0231866.
+\bibitem[PestBuda(2025)]{pestbuda2025}
+PestBuda (2025). Visszatérhet a villamos a Bajcsy-Zsilinszky útra.
+2025.~október~1.
+\url{https://pestbuda.hu/cikk/20251001_visszaterhet_a_villamos_a_bajcsy_zsilinszky_utra}
+
+\bibitem[Qasseer és Munkácsy(2025)]{qasseer2025}
+Qasseer, O., Munkácsy, A. (2025). A közösségi közlekedési hálózat
+központiságának hatása Budapest városszerkezetére.
+\emph{Közlekedéstudományi Szemle}, 75(5).
+
+\bibitem[Rockafellar és Uryasev(2000)]{rockafellar2000}
+Rockafellar, R.~T., Uryasev, S. (2000). Optimization of conditional
+value-at-risk. \emph{Journal of Risk}, 2(3), 21--41.
+
+\bibitem[Rodríguez-Núñez és García-Palomares(2014)]{rodriguez2014}
+Rodríguez-Núñez, E., García-Palomares, J.~C. (2014). Measuring the
+vulnerability of public transport networks. \emph{Journal of Transport
+Geography}, 35, 50--63.
+
+\bibitem[Runfola et~al.(2020)]{runfola2020}
+Runfola, D. et~al. (2020). geoBoundaries: A global database of political
+administrative boundaries. \emph{PLoS ONE}, 15(4), e0231866.
 
 \bibitem[Snickars és Weibull(1977)]{snickars1977}
-Snickars, F., Weibull, J.~W. (1977).
-A minimum information principle: Theory and practice.
-\emph{Regional Science and Urban Economics}, 7(1--2):137--168.
+Snickars, F., Weibull, J.~W. (1977). A minimum information principle: Theory
+and practice. \emph{Regional Science and Urban Economics}, 7(1--2),
+137--168.
 
 \bibitem[Spiess és Florian(1989)]{spiess1989}
-Spiess, H., Florian, M. (1989).
-Optimal strategies: A new assignment model for transit networks.
-\emph{Transportation Research Part B}, 23(2):83--102.
+Spiess, H., Florian, M. (1989). Optimal strategies: A new assignment model for
+transit networks. \emph{Transportation Research Part B}, 23(2), 83--102.
+
+\bibitem[von Ferber et~al.(2009)]{vonferber2009}
+von Ferber, C., Holovatch, T., Holovatch, Yu., Palchykov, V. (2009). Public
+transport networks: empirical analysis and modeling. \emph{The European
+Physical Journal B}, 68(2), 261--275.
+
+\bibitem[Vuchic(2005)]{vuchic2005}
+Vuchic, V.~R. (2005). \emph{Urban Transit: Operations, Planning, and
+Economics}. Wiley, Hoboken.
 
 \bibitem[Wilson(1969)]{wilson1969}
-Wilson, A.~G. (1969).
-The use of entropy maximising models in the theory of trip distribution,
-mode split and route split.
-\emph{Journal of Transport Economics and Policy}, 3(1):108--126.
+Wilson, A.~G. (1969). The use of entropy maximising models in the theory of
+trip distribution, mode split and route split. \emph{Journal of Transport
+Economics and Policy}, 3(1), 108--126.
+
+\bibitem[Zhu et~al.(2024)]{zhu2024}
+Zhu, J., Khan, A., Akcora, C.~G. (2024). Data depth and core-based trend
+detection on blockchain transaction networks. \emph{Frontiers in Blockchain}.
 
 \end{thebibliography}
 
 % =============================================================================
+\clearpage
 \appendix
 \renewcommand{\thesection}{\Alph{section}}
-\section{Megvalósítás és reprodukálhatóság}
+\section{Mellékletek}
+
+\subsection{Etikai nyilatkozat a generatív mesterséges intelligencia
+felhasználásáról}
+
+Molnár Marcell hallgató (Neptun-kód: [Neptun-kód]) a Budapesti Corvinus
+Egyetem Etikai Kódexén alapuló és eszerint érvényesülő etikai felelősségem
+tudatában kijelentem, hogy a TDK elkészítéséhez generatív mesterséges
+intelligencia-rendszert vagy -szolgáltatást (a továbbiakban: GMI) az
+alábbiak szerint vettem igénybe.
+
+\emph{(Aláhúzással jelölje a megfelelő elemet vagy elemeket az alábbi
+listában!)}
+\begin{enumerate}
+  \item Nem használtam fel GMI rendszert vagy szolgáltatást.
+  \item \uline{GMI alapú rendszert használtam fel:}
+  \begin{enumerate}[label=\alph*)]
+    \item \uline{Szakirodalom kutatásához, válogatásához}\\
+      a rendszer neve, verziója: \uline{Anthropic Claude (Claude Code)}
+    \item \uline{Adatok előzetes elemzéséhez, értékeléséhez}\\
+      a rendszer neve, verziója: \uline{Anthropic Claude (Claude Code)}
+    \item \uline{Számítógépes programkód írásához, fejlesztéséhez,
+      ellenőrzéséhez}\\
+      a rendszer neve, verziója: \uline{Anthropic Claude (Claude Code)}
+    \item \uline{Szöveges tartalom stilisztikai és nyelvtani javításához,
+      parafrazáláshoz}\\
+      a rendszer neve, verziója: \uline{Anthropic Claude (Claude Code)}
+    \item \uline{Képi vagy audiovizuális tartalom fejlesztéséhez,
+      létrehozásához}\\
+      a rendszer neve, verziója: \uline{Anthropic Claude (Claude Code),
+      a térképeket előállító programkód révén}
+    \item Egyes szövegrészek fordításához (pl.\ magyar és idegen nyelv
+      között)
+    \item \uline{Egyéb módon, mégpedig: a matematikai levezetések és a
+      dolgozat szövegének vázlatos megírásához}\\
+      a rendszer neve, verziója: \uline{Anthropic Claude (Claude Code)}
+  \end{enumerate}
+\end{enumerate}
+[A szerző kiegészítése: a saját munka pontos leírása (a kutatási kérdések,
+a modellválasztás, az eredmények ellenőrzése és értelmezése, a szöveg
+átírása), valamint annak megjelölése, mely részek maradtak generatív
+mesterséges intelligenciával előállított formában.]
+
+Tudomással bírok arról, hogy az Egyetem az általam benyújtott munkákat
+mesterséges\-intelligencia-detektor alkalmazással átvizsgálhatja, s ennek
+eredményétől függően akár etikai eljárást is kezdeményezhet ellenem.
+
+\subsection{Megvalósítás és reprodukálhatóság}
 \label{app:repro}
 
 A modellt a \texttt{bkk-markov-passenger-flow} Python-csomag valósítja meg
-(NumPy, SciPy, pandas; a ritka mátrixokat CSR formában tároljuk). A
-dolgozat minden száma, ábrája és táblázata az alábbi lépésekkel állítható elő:
+(NumPy, SciPy, pandas, shapely). A dolgozat minden száma, ábrája és
+táblázata az alábbi lépésekkel állítható elő:
 \begin{enumerate}
   \item a BKK GTFS-menetrend (\FEEDVER) letöltése a MobilityData tükréről;
   \item \texttt{python scripts/tdk\_analysis.py --date 20260609}
     (stacionárius megoldás, ellenőrzés, érzékenység, sérülékenység);
-  \item \texttt{python scripts/tdk\_scenarios.py} (új vonalak, M5);
-  \item \texttt{python scripts/tdk\_figures.py} (térképek EOV-vetületben);
-  \item \texttt{python scripts/tdk\_tex\_numbers.py} (a szövegbeli számok és
-    a táblázatok generálása).
+  \item \texttt{python scripts/tdk\_scenarios.py} (jelölt vonalak);
+  \item \texttt{python scripts/tdk\_plans.py} és
+    \texttt{tdk\_plans\_demand.py} (a tervezett fejlesztések, a tervek utáni
+    keresés és a jövőbeli igény);
+  \item \texttt{python scripts/tdk\_figures.py} és
+    \texttt{tdk\_tex\_numbers.py} (térképek, szövegbeli számok, táblázatok).
 \end{enumerate}
-A megvalósítást automatikus tesztek ellenőrzik, köztük a részgenerátor
-szerkezete, Little törvénye, a tranziens konvergenciája, az egzakt megoldás
-Monte-Carlo-összevetése és a min-plusz frissítés egyezése a teljes
-Dijkstra-számítással.
-
-\section{Nyilatkozat a mesterséges intelligencia használatáról}
-\label{app:mi}
-
-A versenyfelhívás előírása szerint ebben a függelékben kell feltüntetni,
-milyen eszközöket és milyen célra használt a szerző. A dolgozat jelen
-változatának elkészítésében az Anthropic Claude nagy nyelvi modellje
-(Claude Code fejlesztői környezetben) a következő feladatokat végezte:
-\begin{itemize}
-  \item a Python-kód (modell, elemzés, hálózatfejlesztési számítások,
-    térképek, tesztek) megírása és hibakeresése;
-  \item a matematikai levezetések és bizonyítások megfogalmazása;
-  \item szakirodalmi források és a BKK közzétett adatainak keresése;
-  \item a dolgozat szövegének és ábráinak elkészítése.
-\end{itemize}
-[A szerző kiegészítése: a saját munka pontos leírása (pl.\ a kutatási
-kérdések megfogalmazása, a modellválasztás, az eredmények ellenőrzése és
-értelmezése, a szöveg átírása), valamint annak megjelölése, mely részek
-maradtak mesterséges intelligenciával előállított formában.]
+A megvalósítást automatikus tesztek ellenőrzik (a részgenerátor szerkezete,
+Little törvénye, a Monte-Carlo-összevetés, a min-plusz frissítés egyezése a
+teljes Dijkstra-számítással, az utcagráfon vezetett útvonalak).
 
 \end{document}
